@@ -40,13 +40,15 @@ void OTG_HS_IRQHandler(void)
 
 static void SystemClock_Config(void)
 {
+  TU_LOG1("SystemClock Config Init\r\n");
+
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
   RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
 
   /** Supply configuration update enable
   */
-  HAL_PWREx_ConfigSupply(PWR_DIRECT_SMPS_SUPPLY);
+  HAL_PWREx_ConfigSupply(PWR_LDO_SUPPLY);
   /** Configure the main internal regulator output voltage
   */
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE0);
@@ -91,7 +93,7 @@ static void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_USB|RCC_PERIPHCLK_OSPI;
+  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_USB;
   PeriphClkInitStruct.PLL3.PLL3M = 5;
   PeriphClkInitStruct.PLL3.PLL3N = 48;
   PeriphClkInitStruct.PLL3.PLL3P = 2;
@@ -100,7 +102,6 @@ static void SystemClock_Config(void)
   PeriphClkInitStruct.PLL3.PLL3RGE = RCC_PLL3VCIRANGE_2;
   PeriphClkInitStruct.PLL3.PLL3VCOSEL = RCC_PLL3VCOWIDE;
   PeriphClkInitStruct.PLL3.PLL3FRACN = 0;
-  PeriphClkInitStruct.OspiClockSelection = RCC_OSPICLKSOURCE_PLL;
   PeriphClkInitStruct.UsbClockSelection = RCC_USBCLKSOURCE_PLL3;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
   {
@@ -110,12 +111,40 @@ static void SystemClock_Config(void)
   */
   HAL_PWREx_EnableUSBVoltageDetector();
 }
+
+/*
+ * @brief OSPI Clock Init
+ * @param clock : OSPI Clock
+ */
+void OSPI_Clock_Init(uint16_t clock)
+{
+    RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
+
+    PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_OSPI;
+    PeriphClkInitStruct.PLL2.PLL2M = 25;
+    PeriphClkInitStruct.PLL2.PLL2N = clock;
+    PeriphClkInitStruct.PLL2.PLL2P = 2;
+    PeriphClkInitStruct.PLL2.PLL2Q = 2;
+    PeriphClkInitStruct.PLL2.PLL2R = 1;
+    PeriphClkInitStruct.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_0;
+    PeriphClkInitStruct.PLL2.PLL2VCOSEL = RCC_PLL2VCOMEDIUM;
+    PeriphClkInitStruct.PLL2.PLL2FRACN = 0;
+    PeriphClkInitStruct.OspiClockSelection = RCC_OSPICLKSOURCE_PLL2;
+    if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
+    {
+      Error_Handler();
+    }
+}
+
+
 extern void flash_init(void);
+extern void psram_init(void);
 void clock_init(void)
 {
    TU_LOG1("Clock Init\r\n");
 
    SystemClock_Config();
+   OSPI_Clock_Init(264);
 
    /* GPIO Ports Clock Enable */
    __HAL_RCC_GPIOC_CLK_ENABLE();
@@ -125,7 +154,8 @@ void clock_init(void)
    __HAL_RCC_GPIOH_CLK_ENABLE();
    __HAL_RCC_GPIOD_CLK_ENABLE();
 
-   flash_init();
+   flash_init(); 
+   psram_init();
 }
 
 void dfu_init(void)
@@ -165,11 +195,17 @@ void dfu_init(void)
   */
 void Error_Handler(void)
 {
+  static uint8_t flag = 1;
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
   while (1)
   {
+    if(flag)  
+    {
+      TU_LOG1("Error_Handler\r\n");
+      flag = 0;
+    }
   }
   /* USER CODE END Error_Handler_Debug */
 }
