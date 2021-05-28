@@ -84,7 +84,7 @@ static void MX_OCTOSPI2_Init(void)
 	}
 	sOspiManagerCfg.ClkPort = 2;
 	sOspiManagerCfg.NCSPort = 2;
-	sOspiManagerCfg.IOLowPort = HAL_OSPIM_IOPORT_2_LOW;
+	sOspiManagerCfg.IOLowPort = HAL_OSPIM_IOPORT_2_HIGH;
 	if (HAL_OSPIM_Config(&hospi2, &sOspiManagerCfg, HAL_OSPI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
 	{
 		Error_Handler();
@@ -94,15 +94,6 @@ static void MX_OCTOSPI2_Init(void)
 	/* USER CODE END OCTOSPI2_Init 2 */
 }
 
-// /**
-//   * @brief OCTOSPI2 Initialization Function
-//   * @param None
-//   * @retval None
-//   */
-// static void MX_OCTOSPI2_DeInit(void)
-// {
-// 	HAL_OSPI_DeInit(&hospi2);
-// }
 
 /**
 * @brief OSPI MSP Initialization
@@ -116,38 +107,117 @@ void HAL_OSPI_MspInit(OSPI_HandleTypeDef *hospi)
 	if (hospi->Instance == OCTOSPI2)
 	{
 		/* USER CODE BEGIN OCTOSPI2_MspInit 0 */
-
+		
 		/* USER CODE END OCTOSPI2_MspInit 0 */
+		  /** Initializes the peripherals clock*/
 		/* Peripheral clock enable */
 		__HAL_RCC_OSPI2_CLK_ENABLE();
-
-		__HAL_RCC_GPIOF_CLK_ENABLE();
 		__HAL_RCC_GPIOG_CLK_ENABLE();
+		__HAL_RCC_GPIOF_CLK_ENABLE();
 		/**OCTOSPI2 GPIO Configuration
-    	PF1     ------> OCTOSPIM_P2_IO1
-    	PF3     ------> OCTOSPIM_P2_IO3
-    	PG12    ------> OCTOSPIM_P2_NCS
-    	PF0     ------> OCTOSPIM_P2_IO0
-    	PF2     ------> OCTOSPIM_P2_IO2
-    	PF4     ------> OCTOSPIM_P2_CLK
-    	*/
-		GPIO_InitStruct.Pin = GPIO_PIN_1 | GPIO_PIN_3 | GPIO_PIN_0 | GPIO_PIN_2 | GPIO_PIN_4;
-		GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-		GPIO_InitStruct.Pull = GPIO_NOPULL;
-		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-		GPIO_InitStruct.Alternate = GPIO_AF9_OCTOSPIM_P2;
-		HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
-
-		GPIO_InitStruct.Pin = GPIO_PIN_12;
+		PG10     ------> OCTOSPIM_P2_IO6
+		PG11     ------> OCTOSPIM_P2_IO7
+		PG12     ------> OCTOSPIM_P2_NCS
+		PF4     ------> OCTOSPIM_P2_CLK
+		PG0     ------> OCTOSPIM_P2_IO4
+		PG1     ------> OCTOSPIM_P2_IO5
+		*/
+		GPIO_InitStruct.Pin = GPIO_PIN_10|GPIO_PIN_12;
 		GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
 		GPIO_InitStruct.Pull = GPIO_NOPULL;
 		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
 		GPIO_InitStruct.Alternate = GPIO_AF3_OCTOSPIM_P2;
 		HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
+		GPIO_InitStruct.Pin = GPIO_PIN_11|GPIO_PIN_0|GPIO_PIN_1;
+		GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+		GPIO_InitStruct.Pull = GPIO_NOPULL;
+		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+		GPIO_InitStruct.Alternate = GPIO_AF9_OCTOSPIM_P2;
+		HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
+
+		GPIO_InitStruct.Pin = GPIO_PIN_4;
+		GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+		GPIO_InitStruct.Pull = GPIO_NOPULL;
+		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+		GPIO_InitStruct.Alternate = GPIO_AF9_OCTOSPIM_P2;
+		HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
+
 		/* USER CODE BEGIN OCTOSPI2_MspInit 1 */
 
 		/* USER CODE END OCTOSPI2_MspInit 1 */
+	}
+	if(hospi->Instance==OCTOSPI1)
+	{
+	/* USER CODE BEGIN OCTOSPI1_MspInit 0 */
+
+	/* USER CODE END OCTOSPI1_MspInit 0 */
+		/* OCTOSPI1 clock enable */
+		__HAL_RCC_OSPI1_CLK_ENABLE();
+
+		__HAL_RCC_GPIOD_CLK_ENABLE();
+		__HAL_RCC_GPIOF_CLK_ENABLE();
+		__HAL_RCC_GPIOG_CLK_ENABLE();
+		__HAL_RCC_GPIOE_CLK_ENABLE();
+		__HAL_RCC_GPIOB_CLK_ENABLE();
+		/**OCTOSPI1 GPIO Configuration
+		PD5     ------> OCTOSPIM_P1_IO5
+		PD4     ------> OCTOSPIM_P1_IO4
+		PD7     ------> OCTOSPIM_P1_IO7
+		PF7     ------> OCTOSPIM_P1_IO2
+		PF6     ------> OCTOSPIM_P1_IO3
+		PF9     ------> OCTOSPIM_P1_IO1
+		PG6     ------> OCTOSPIM_P1_NCS
+		PF10     ------> OCTOSPIM_P1_CLK
+		PF8     ------> OCTOSPIM_P1_IO0
+		PE9     ------> OCTOSPIM_P1_IO6
+		PB2     ------> OCTOSPIM_P1_DQS
+		*/
+		GPIO_InitStruct.Pin = GPIO_PIN_5|GPIO_PIN_4|GPIO_PIN_7;
+		GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+		GPIO_InitStruct.Pull = GPIO_NOPULL;
+		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+		GPIO_InitStruct.Alternate = GPIO_AF10_OCTOSPIM_P1;
+		HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+		GPIO_InitStruct.Pin = GPIO_PIN_7|GPIO_PIN_6|GPIO_PIN_9|GPIO_PIN_8;
+		GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+		GPIO_InitStruct.Pull = GPIO_NOPULL;
+		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+		GPIO_InitStruct.Alternate = GPIO_AF10_OCTOSPIM_P1;
+		HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
+
+		GPIO_InitStruct.Pin = GPIO_PIN_6;
+		GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+		GPIO_InitStruct.Pull = GPIO_NOPULL;
+		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+		GPIO_InitStruct.Alternate = GPIO_AF10_OCTOSPIM_P1;
+		HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
+
+		GPIO_InitStruct.Pin = GPIO_PIN_10;
+		GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+		GPIO_InitStruct.Pull = GPIO_NOPULL;
+		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+		GPIO_InitStruct.Alternate = GPIO_AF9_OCTOSPIM_P1;
+		HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
+
+		GPIO_InitStruct.Pin = GPIO_PIN_9;
+		GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+		GPIO_InitStruct.Pull = GPIO_NOPULL;
+		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+		GPIO_InitStruct.Alternate = GPIO_AF10_OCTOSPIM_P1;
+		HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+		GPIO_InitStruct.Pin = GPIO_PIN_2;
+		GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+		GPIO_InitStruct.Pull = GPIO_NOPULL;
+		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+		GPIO_InitStruct.Alternate = GPIO_AF10_OCTOSPIM_P1;
+		HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+	/* USER CODE BEGIN OCTOSPI1_MspInit 1 */
+
+	/* USER CODE END OCTOSPI1_MspInit 1 */
 	}
 }
 
@@ -168,21 +238,58 @@ void HAL_OSPI_MspDeInit(OSPI_HandleTypeDef *hospi)
 		__HAL_RCC_OSPI2_CLK_DISABLE();
 
 		/**OCTOSPI2 GPIO Configuration
-    	PF1     ------> OCTOSPIM_P2_IO1
-    	PF3     ------> OCTOSPIM_P2_IO3
-    	PG12    ------> OCTOSPIM_P2_NCS
-    	PF0     ------> OCTOSPIM_P2_IO0
-    	PF2     ------> OCTOSPIM_P2_IO2
-    	PF4     ------> OCTOSPIM_P2_CLK
-    	*/
-		HAL_GPIO_DeInit(GPIOF, GPIO_PIN_1 | GPIO_PIN_3 | GPIO_PIN_0 | GPIO_PIN_2 | GPIO_PIN_4);
+		PG10     ------> OCTOSPIM_P2_IO6
+		PG11     ------> OCTOSPIM_P2_IO7
+		PG12     ------> OCTOSPIM_P2_NCS
+		PF4     ------> OCTOSPIM_P2_CLK
+		PG0     ------> OCTOSPIM_P2_IO4
+		PG1     ------> OCTOSPIM_P2_IO5
+		*/
+		HAL_GPIO_DeInit(GPIOG, GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_0
+							|GPIO_PIN_1);
 
-		HAL_GPIO_DeInit(GPIOG, GPIO_PIN_12);
+		HAL_GPIO_DeInit(GPIOF, GPIO_PIN_4);
 
 		/* USER CODE BEGIN OCTOSPI2_MspDeInit 1 */
 
 		/* USER CODE END OCTOSPI2_MspDeInit 1 */
 	}
+    if(hospi->Instance==OCTOSPI1)
+  	{
+	/* USER CODE BEGIN OCTOSPI1_MspDeInit 0 */
+
+	/* USER CODE END OCTOSPI1_MspDeInit 0 */
+		/* Peripheral clock disable */
+		__HAL_RCC_OSPI1_CLK_DISABLE();
+
+		/**OCTOSPI1 GPIO Configuration
+		PD5     ------> OCTOSPIM_P1_IO5
+		PD4     ------> OCTOSPIM_P1_IO4
+		PD7     ------> OCTOSPIM_P1_IO7
+		PF7     ------> OCTOSPIM_P1_IO2
+		PF6     ------> OCTOSPIM_P1_IO3
+		PF9     ------> OCTOSPIM_P1_IO1
+		PG6     ------> OCTOSPIM_P1_NCS
+		PF10     ------> OCTOSPIM_P1_CLK
+		PF8     ------> OCTOSPIM_P1_IO0
+		PE9     ------> OCTOSPIM_P1_IO6
+		PB2     ------> OCTOSPIM_P1_DQS
+		*/
+		HAL_GPIO_DeInit(GPIOD, GPIO_PIN_5|GPIO_PIN_4|GPIO_PIN_7);
+
+		HAL_GPIO_DeInit(GPIOF, GPIO_PIN_7|GPIO_PIN_6|GPIO_PIN_9|GPIO_PIN_10
+							|GPIO_PIN_8);
+
+		HAL_GPIO_DeInit(GPIOG, GPIO_PIN_6);
+
+		HAL_GPIO_DeInit(GPIOE, GPIO_PIN_9);
+
+		HAL_GPIO_DeInit(GPIOB, GPIO_PIN_2);
+
+		/* USER CODE BEGIN OCTOSPI1_MspDeInit 1 */
+
+		/* USER CODE END OCTOSPI1_MspDeInit 1 */
+  	}
 }
 
 //--------------------------------------------------------------------+
@@ -199,7 +306,11 @@ void flash_init(void)
 
 void board_flash_memory_mapped(void)
 {
-	W25Q128JVSIQ_EnableQuadMemoryMappedMode(&hospi2);
+	if( W25Q128JVSIQ_EnableQuadMemoryMappedMode(&hospi2) == W25Q128JVSIQ_OK) 
+		TU_LOG1("MemoryMapped ok\r\n");
+	else{	
+		TU_LOG1("MemoryMapped err\r\n");
+	}
 }
 
 void board_flash_init(void)

@@ -23,7 +23,7 @@
  * @brief  W25Q128JVSIQ Info
  */
 
-#define W25Q128JVSIQ_FLASH_SIZE                  (uint32_t)(128*1024*1024/16)  /*!< 128Mbits => 16MBytes */
+#define W25Q128JVSIQ_FLASH_SIZE                  (uint32_t)(128*1024*1024/8)  /*!< 128Mbits => 16MBytes */
 #define W25Q128JVSIQ_PAGE_SIZE                   256                          /*!< 65536 pages of 256Bytes */
 #define W25Q128JVSIQ_SECTOR_64K                  (uint32_t)(16 * 1024)        /*!< 1024 sectors of 64KBytes     */
 #define W25Q128JVSIQ_SUBSECTOR_4K                (uint32_t)(1  * 1024)        /*!< 4087 subsectors of 4KBytes  */

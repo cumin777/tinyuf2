@@ -37,7 +37,7 @@ int32_t W25Q128JVSIQ_AutoPollingMemReady(OSPI_HandleTypeDef *Ctx) {
 
 	/* Configure automatic polling mode to wait for memory ready */
 	s_command.OperationType = HAL_OSPI_OPTYPE_COMMON_CFG;
-	s_command.FlashId = HAL_OSPI_FLASH_ID_1;
+	s_command.FlashId = HAL_OSPI_FLASH_ID_2;
 	s_command.InstructionMode = HAL_OSPI_INSTRUCTION_1_LINE;
 	s_command.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
 	s_command.InstructionSize = HAL_OSPI_INSTRUCTION_8_BITS;
@@ -109,15 +109,16 @@ int32_t W25Q128JVSIQ_Init(OSPI_HandleTypeDef *Ctx) {
 int32_t W25Q128JVSIQ_QuadWriteEnable(OSPI_HandleTypeDef *Ctx)
 {
 	unsigned char reg;
+  //W25Q128JVSIQ_WriteEnable(Ctx);
 	W25Q128JVSIQ_ReadStatusRegister(Ctx, 2, &reg);
-	TU_LOG1("REG2: %02x\n\r", reg);
+	//TU_LOG1("REG2: %02x\n\r", reg);
 	if(reg != 0x02)
 	{
 		reg = 0x02;
 		W25Q128JVSIQ_WriteEnable(Ctx);
 		W25Q128JVSIQ_WriteStatusRegister(Ctx, 2, reg);
     W25Q128JVSIQ_ReadStatusRegister(Ctx, 2, &reg);
-	  TU_LOG1("REG2: %02x\n\r", reg);
+	  //TU_LOG1("REG2: %02x\n\r", reg);
 	}
 
 
@@ -136,7 +137,7 @@ int32_t W25Q128JVSIQ_ResetEnable(OSPI_HandleTypeDef *Ctx) {
 
 	/* Initialize the reset enable command */
 	s_command.OperationType = HAL_OSPI_OPTYPE_COMMON_CFG;
-	s_command.FlashId = HAL_OSPI_FLASH_ID_1;
+	s_command.FlashId = HAL_OSPI_FLASH_ID_2;
 	s_command.InstructionMode = HAL_OSPI_INSTRUCTION_1_LINE;
 	s_command.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
 	s_command.InstructionSize = HAL_OSPI_INSTRUCTION_8_BITS;
@@ -168,7 +169,7 @@ int32_t W25Q128JVSIQ_ResetDevice(OSPI_HandleTypeDef *Ctx) {
 
 	/* Initialize the reset enable command */
 	s_command.OperationType = HAL_OSPI_OPTYPE_COMMON_CFG;
-	s_command.FlashId = HAL_OSPI_FLASH_ID_1;
+	s_command.FlashId = HAL_OSPI_FLASH_ID_2;
 	s_command.InstructionMode = HAL_OSPI_INSTRUCTION_1_LINE;
 	s_command.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
 	s_command.InstructionSize = HAL_OSPI_INSTRUCTION_8_BITS;
@@ -200,7 +201,7 @@ int32_t W25Q128JVSIQ_EnterPowerDown(OSPI_HandleTypeDef *Ctx) {
 
 	/* Initialize the reset enable command */
 	s_command.OperationType = HAL_OSPI_OPTYPE_COMMON_CFG;
-	s_command.FlashId = HAL_OSPI_FLASH_ID_1;
+	s_command.FlashId = HAL_OSPI_FLASH_ID_2;
 	s_command.InstructionMode = HAL_OSPI_INSTRUCTION_1_LINE;
 	s_command.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
 	s_command.InstructionSize = HAL_OSPI_INSTRUCTION_8_BITS;
@@ -241,7 +242,7 @@ int32_t W25Q128JVSIQ_ReadUniqueID(OSPI_HandleTypeDef *Ctx, uint8_t *ID) {
 
 	/* Initialize the read ID command */
 	s_command.OperationType = HAL_OSPI_OPTYPE_COMMON_CFG;
-	s_command.FlashId = HAL_OSPI_FLASH_ID_1;
+	s_command.FlashId = HAL_OSPI_FLASH_ID_2;
 	s_command.InstructionMode = HAL_OSPI_INSTRUCTION_1_LINE;
 	s_command.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
 	s_command.InstructionSize = HAL_OSPI_INSTRUCTION_8_BITS;
@@ -291,7 +292,7 @@ int32_t W25Q128JVSIQ_NoOperation(OSPI_HandleTypeDef *Ctx)
 
   /* Initialize the no operation command */
   s_command.OperationType      = HAL_OSPI_OPTYPE_COMMON_CFG;
-  s_command.FlashId            = HAL_OSPI_FLASH_ID_1;
+  s_command.FlashId            = HAL_OSPI_FLASH_ID_2;
   s_command.InstructionMode    = HAL_OSPI_INSTRUCTION_1_LINE;
   s_command.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
   s_command.InstructionSize    = HAL_OSPI_INSTRUCTION_8_BITS;
@@ -331,7 +332,7 @@ int32_t W25Q128JVSIQ_ReadJEDECID(OSPI_HandleTypeDef *Ctx, uint8_t *ID) {
 
 	/* Initialize the read ID command */
 	s_command.OperationType = HAL_OSPI_OPTYPE_COMMON_CFG;
-	s_command.FlashId = HAL_OSPI_FLASH_ID_1;
+	s_command.FlashId = HAL_OSPI_FLASH_ID_2;
 	s_command.InstructionMode = HAL_OSPI_INSTRUCTION_1_LINE;
 	s_command.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
 	s_command.InstructionSize = HAL_OSPI_INSTRUCTION_8_BITS;
@@ -383,7 +384,7 @@ int32_t W25Q128JVSIQ_ReadSTR(OSPI_HandleTypeDef *Ctx, uint8_t *pData, uint32_t R
 
   /* Initialize the read command */
   s_command.OperationType      = HAL_OSPI_OPTYPE_COMMON_CFG;
-  s_command.FlashId            = HAL_OSPI_FLASH_ID_1;
+  s_command.FlashId            = HAL_OSPI_FLASH_ID_2;
   s_command.InstructionMode    = HAL_OSPI_INSTRUCTION_1_LINE;
   s_command.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
   s_command.InstructionSize    = HAL_OSPI_INSTRUCTION_8_BITS;
@@ -430,7 +431,7 @@ int32_t W25Q128JVSIQ_ReadQuad(OSPI_HandleTypeDef *Ctx, uint8_t *pData, uint32_t 
 
   /* Initialize the read command */
   s_command.OperationType      = HAL_OSPI_OPTYPE_COMMON_CFG;
-  s_command.FlashId            = HAL_OSPI_FLASH_ID_1;
+  s_command.FlashId            = HAL_OSPI_FLASH_ID_2;
   s_command.InstructionMode    = HAL_OSPI_INSTRUCTION_1_LINE;
   s_command.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
   s_command.InstructionSize    = HAL_OSPI_INSTRUCTION_8_BITS;
@@ -479,11 +480,13 @@ int32_t W25Q128JVSIQ_ReadQuad(OSPI_HandleTypeDef *Ctx, uint8_t *pData, uint32_t 
   */
 int32_t W25Q128JVSIQ_PageProgram(OSPI_HandleTypeDef *Ctx, uint8_t *pData, uint32_t WriteAddr, uint32_t Size)
 {
+  //W25Q128JVSIQ_WriteEnable(Ctx);
+
   OSPI_RegularCmdTypeDef s_command = {0};
 
   /* Initialize the program command */
   s_command.OperationType      = HAL_OSPI_OPTYPE_COMMON_CFG;
-  s_command.FlashId            = HAL_OSPI_FLASH_ID_1;
+  s_command.FlashId            = HAL_OSPI_FLASH_ID_2;
   s_command.InstructionMode    = HAL_OSPI_INSTRUCTION_1_LINE;
   s_command.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
   s_command.InstructionSize    = HAL_OSPI_INSTRUCTION_8_BITS;
@@ -526,11 +529,13 @@ int32_t W25Q128JVSIQ_PageProgram(OSPI_HandleTypeDef *Ctx, uint8_t *pData, uint32
   */
 int32_t W25Q128JVSIQ_PageProgramQuad(OSPI_HandleTypeDef *Ctx, uint8_t *pData, uint32_t WriteAddr, uint32_t Size)
 {
+  //W25Q128JVSIQ_QuadWriteEnable(Ctx);
+
   OSPI_RegularCmdTypeDef s_command = {0};
 
   /* Initialize the program command */
   s_command.OperationType      = HAL_OSPI_OPTYPE_COMMON_CFG;
-  s_command.FlashId            = HAL_OSPI_FLASH_ID_1;
+  s_command.FlashId            = HAL_OSPI_FLASH_ID_2;
   s_command.InstructionMode    = HAL_OSPI_INSTRUCTION_1_LINE;
   s_command.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
   s_command.InstructionSize    = HAL_OSPI_INSTRUCTION_8_BITS;
@@ -580,7 +585,7 @@ int32_t W25Q128JVSIQ_BlockErase(OSPI_HandleTypeDef *Ctx, uint32_t BlockAddress, 
 
   /* Initialize the erase command */
   s_command.OperationType      = HAL_OSPI_OPTYPE_COMMON_CFG;
-  s_command.FlashId            = HAL_OSPI_FLASH_ID_1;
+  s_command.FlashId            = HAL_OSPI_FLASH_ID_2;
   s_command.InstructionMode    = HAL_OSPI_INSTRUCTION_1_LINE;
   s_command.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
   s_command.InstructionSize    = HAL_OSPI_INSTRUCTION_8_BITS;
@@ -616,6 +621,12 @@ int32_t W25Q128JVSIQ_BlockErase(OSPI_HandleTypeDef *Ctx, uint32_t BlockAddress, 
     return W25Q128JVSIQ_ERROR;
   }
 
+  /*等待擦除完成*/
+  uint8_t reg_value;
+  do{
+	  W25Q128JVSIQ_ReadStatusRegister(Ctx,1,&reg_value);
+  }while(reg_value & 0x01);
+
   return W25Q128JVSIQ_OK;
 }
 
@@ -632,7 +643,7 @@ int32_t W25Q128JVSIQ_ChipErase(OSPI_HandleTypeDef *Ctx)
 
   /* Initialize the erase command */
   s_command.OperationType      = HAL_OSPI_OPTYPE_COMMON_CFG;
-  s_command.FlashId            = HAL_OSPI_FLASH_ID_1;
+  s_command.FlashId            = HAL_OSPI_FLASH_ID_2;
   s_command.InstructionMode    = HAL_OSPI_INSTRUCTION_1_LINE;
   s_command.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
   s_command.InstructionSize    = HAL_OSPI_INSTRUCTION_8_BITS;
@@ -668,7 +679,7 @@ int32_t W25Q128JVSIQ_EnableSTRMemoryMappedMode(OSPI_HandleTypeDef *Ctx)
 
   /* Initialize the read command */
   s_command.OperationType      = HAL_OSPI_OPTYPE_READ_CFG;
-  s_command.FlashId            = HAL_OSPI_FLASH_ID_1;
+  s_command.FlashId            = HAL_OSPI_FLASH_ID_2;
   s_command.InstructionMode    = HAL_OSPI_INSTRUCTION_1_LINE;
   s_command.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
   s_command.InstructionSize    = HAL_OSPI_INSTRUCTION_8_BITS;
@@ -724,7 +735,7 @@ int32_t W25Q128JVSIQ_EnableQuadMemoryMappedMode(OSPI_HandleTypeDef *Ctx)
 
   /* Initialize the read command */
    s_command.OperationType      = HAL_OSPI_OPTYPE_READ_CFG;
-   s_command.FlashId            = HAL_OSPI_FLASH_ID_1;
+   s_command.FlashId            = HAL_OSPI_FLASH_ID_2;
    s_command.InstructionMode    = HAL_OSPI_INSTRUCTION_1_LINE;
    s_command.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
    s_command.InstructionSize    = HAL_OSPI_INSTRUCTION_8_BITS;
@@ -787,7 +798,7 @@ int32_t W25Q128JVSIQ_Suspend(OSPI_HandleTypeDef *Ctx)
 
   /* Initialize the suspend command */
   s_command.OperationType      = HAL_OSPI_OPTYPE_COMMON_CFG;
-  s_command.FlashId            = HAL_OSPI_FLASH_ID_1;
+  s_command.FlashId            = HAL_OSPI_FLASH_ID_2;
   s_command.InstructionMode    = HAL_OSPI_INSTRUCTION_1_LINE;
   s_command.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
   s_command.InstructionSize    = HAL_OSPI_INSTRUCTION_8_BITS;
@@ -821,7 +832,7 @@ int32_t W25Q128JVSIQ_Resume(OSPI_HandleTypeDef *Ctx)
 
   /* Initialize the resume command */
   s_command.OperationType      = HAL_OSPI_OPTYPE_COMMON_CFG;
-  s_command.FlashId            = HAL_OSPI_FLASH_ID_1;
+  s_command.FlashId            = HAL_OSPI_FLASH_ID_2;
   s_command.InstructionMode    = HAL_OSPI_INSTRUCTION_1_LINE;
   s_command.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
   s_command.InstructionSize    = HAL_OSPI_INSTRUCTION_8_BITS;
@@ -858,7 +869,7 @@ int32_t W25Q128JVSIQ_WriteEnable(OSPI_HandleTypeDef *Ctx)
 
   /* Initialize the write enable command */
   s_command.OperationType      = HAL_OSPI_OPTYPE_COMMON_CFG;
-  s_command.FlashId            = HAL_OSPI_FLASH_ID_1;
+  s_command.FlashId            = HAL_OSPI_FLASH_ID_2;
   s_command.InstructionMode    = HAL_OSPI_INSTRUCTION_1_LINE;
   s_command.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
   s_command.InstructionSize    = HAL_OSPI_INSTRUCTION_8_BITS;
@@ -921,7 +932,7 @@ int32_t W25Q128JVSIQ_WriteDisable(OSPI_HandleTypeDef *Ctx)
 
   /* Initialize the write disable command */
   s_command.OperationType      = HAL_OSPI_OPTYPE_COMMON_CFG;
-  s_command.FlashId            = HAL_OSPI_FLASH_ID_1;
+  s_command.FlashId            = HAL_OSPI_FLASH_ID_2;
   s_command.InstructionMode    = HAL_OSPI_INSTRUCTION_1_LINE;
   s_command.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
   s_command.InstructionSize    = HAL_OSPI_INSTRUCTION_8_BITS;
@@ -962,7 +973,7 @@ int32_t W25Q128JVSIQ_ReadStatusRegister(OSPI_HandleTypeDef *Ctx, uint8_t Index, 
 
   /* Initialize the reading of status register */
   s_command.OperationType      = HAL_OSPI_OPTYPE_COMMON_CFG;
-  s_command.FlashId            = HAL_OSPI_FLASH_ID_1;
+  s_command.FlashId            = HAL_OSPI_FLASH_ID_2;
   s_command.InstructionMode    = HAL_OSPI_INSTRUCTION_1_LINE;
   s_command.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
   s_command.InstructionSize    = HAL_OSPI_INSTRUCTION_8_BITS;
@@ -1027,7 +1038,7 @@ int32_t W25Q128JVSIQ_WriteStatusRegister(OSPI_HandleTypeDef *Ctx, uint8_t Index,
 
   /* Initialize the writing of status register */
   s_command.OperationType      = HAL_OSPI_OPTYPE_COMMON_CFG;
-  s_command.FlashId            = HAL_OSPI_FLASH_ID_1;
+  s_command.FlashId            = HAL_OSPI_FLASH_ID_2;
   s_command.InstructionMode    = HAL_OSPI_INSTRUCTION_1_LINE;
   s_command.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
   s_command.InstructionSize    = HAL_OSPI_INSTRUCTION_8_BITS;
@@ -1050,7 +1061,7 @@ int32_t W25Q128JVSIQ_WriteStatusRegister(OSPI_HandleTypeDef *Ctx, uint8_t Index,
   case 2:
 	  s_command.Instruction = W25Q128JVSIQ_WRITE_STATUS_REG2_CMD; break;
   case 3:
-	  s_command.Instruction = W25Q128JVSIQ_WRITE_STATUS_REG2_CMD; break;
+	  s_command.Instruction = W25Q128JVSIQ_WRITE_STATUS_REG3_CMD; break;
   default:
  	  break;
   }
