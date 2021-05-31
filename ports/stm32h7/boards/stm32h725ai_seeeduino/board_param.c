@@ -1,26 +1,29 @@
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2018 Ha Thach for Adafruit Industries
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+/** 
+ * The MIT License (MIT) 
+ * 
+ * Author: Jiahua.zhang (1196466552@qq.com) 
+ * 
+ * Copyright (C) 2021 Seeed Technology Co.,Ltd. 
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy 
+ * of this software and associated documentation files (the "Software"), to deal 
+ * in the Software without restriction, including without limitation the rights 
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell 
+ * copies of the Software, and to permit persons to whom the Software is 
+ * furnished to do so, subject to the following conditions: 
+ * 
+ * The above copyright notice and this permission notice shall be included in 
+ * all copies or substantial portions of the Software. 
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE  
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN 
+ * THE SOFTWARE. 
+ */ 
+
 /* Includes ------------------------------------------------------------------*/
 #include "stm32h7xx.h"
 #include "stm32h7xx_hal.h"
@@ -85,55 +88,56 @@ void DLYB_OCTOSPI1_Calibration(uint8_t phase)
 	uint32_t LNG[3];
 	uint32_t TimeOut = 0;
 
-	/*校准前置 —— 复位OSPI延迟模块旁路位，设置自由运行时钟*/
+	/*Preparation before calibration*/
 	CLEAR_BIT(OCTOSPI1->DCR1,OCTOSPI_DCR1_DLYBYP);
 	SET_BIT(OCTOSPI1->DCR1,OCTOSPI_DCR1_FRCK);
 
-	/*配置延迟线长度为1个完整输入时钟周期*/
-	DLYB_OCTOSPI1->CR 	|= 0x03;				//使能delay block和length sampling
-	DLYB_OCTOSPI1->CFGR &= ( ~ (0xf) );			//设置SEL为12，即使能所有的Delay Unit
+	/*Configure delay line length to 1 full input clock cycle*/
+	DLYB_OCTOSPI1->CR 	|= 0x03;				
+	DLYB_OCTOSPI1->CFGR &= ( ~ (0xf) );			
 	DLYB_OCTOSPI1->CFGR |= 12;
 
-		for(uint8_t i = 0;i < 128;i ++)
+	for(uint8_t i = 0;i < 128;i ++)
+	{
+		DLYB_OCTOSPI1->CFGR &= ( ~ (0x7f<<8) ); 	
+		DLYB_OCTOSPI1->CFGR |= (i << 8);			
+		while( !( (DLYB_OCTOSPI1->CFGR>>31) & 0x01) )		
 		{
-			DLYB_OCTOSPI1->CFGR &= ( ~ (0x7f<<8) ); 	//清零UNIT
-			DLYB_OCTOSPI1->CFGR |= (i << 8);			//设置UNIT
-			while( !( (DLYB_OCTOSPI1->CFGR>>31) & 0x01) )		//LNGF被置为1
+			TimeOut ++;
+			if(TimeOut > 0xffff)
 			{
-				TimeOut ++;
-				if(TimeOut > 0xffff)
-				{
-					break;
-				}
-			}
-			if( ( (DLYB_OCTOSPI1->CFGR>>31) & 0x01) )			//LNGF被置为1
-			{
-				flag = 1;
-			}
-
-			if(flag)
-			{
-				LNGG = (DLYB_OCTOSPI1->CFGR >> 16) & 0xfff;
-				LNG[0] = LNGG & 0x7ff;
-				LNG[1] = (LNGG >> 10) & 0x01;
-				LNG[2] = (LNGG >> 11) & 0x01;
-				if( (LNG[0] > 0) && ( (LNG[1] == 0) || (LNG[2] == 0) ) )	//判断Delay Line Length是否合理
-				{
-					TU_LOG1("The Delay Line is set one input clock period\r\n");
-					break;
-				}
-				else
-				{
-					flag = 0;
-				}
-			}
-			else{	
-				TU_LOG1("The Delay Line is set err\r\n");
+				break;
 			}
 		}
+		if( ( (DLYB_OCTOSPI1->CFGR>>31) & 0x01) )			
+		{
+			flag = 1;
+		}
+
+		if(flag)
+		{
+			LNGG = (DLYB_OCTOSPI1->CFGR >> 16) & 0xfff;
+			LNG[0] = LNGG & 0x7ff;
+			LNG[1] = (LNGG >> 10) & 0x01;
+			LNG[2] = (LNGG >> 11) & 0x01;
+			if( (LNG[0] > 0) && ( (LNG[1] == 0) || (LNG[2] == 0) ) )	//Determine whether the delay line length is reasonable
+			{
+				TU_LOG1("The Delay Line is set one input clock period\r\n");
+				break;
+			}
+			else
+			{
+				flag = 0;
+			}
+		}
+		else
+		{	
+			TU_LOG1("The Delay Line is set err\r\n");
+		}
+	}
 
 
-	/*确定有多少个Unit Delay，跨越一个输入时钟周期*/
+	/*Determine how many Unit delays are required for an input clock cycle*/
 	for(int8_t i = 10;i >= 0;i --)
 	{
 		if( (LNGG >> i) & 0x01 )
@@ -143,14 +147,12 @@ void DLYB_OCTOSPI1_Calibration(uint8_t phase)
 		}
 	}
 
-	/*选择输出时钟相位*/
+	/*Sets the output clock phase*/
 	DLYB_OCTOSPI1->CFGR &= ( ~ (0xf) );
 	DLYB_OCTOSPI1->CFGR |= phase;
 
-	//失能Sampler length enable bit
 	DLYB_OCTOSPI1->CR 	&= ( ~ ( 1 << 1 ) );
 
-	/*失能自由运行时钟*/
 	SET_BIT(OCTOSPI1->CR,OCTOSPI_CR_ABORT);
 	CLEAR_BIT(OCTOSPI1->DCR1,OCTOSPI_DCR1_FRCK);
 }
@@ -276,7 +278,7 @@ void EnableMemMapped(void)
 }
 
 
-static void psram_delay(uint32_t delay)
+static inline void psram_delay(uint32_t delay)
 {
     for(uint32_t i = 0;i < 66000;i ++)
         for(uint32_t j = 0;j < delay;j ++)
@@ -286,26 +288,21 @@ static void psram_delay(uint32_t delay)
 void psram_init(void)
 {
     TU_LOG1("psram init\r\n");
-    MX_OCTOSPI1_Init();                 /*OSPI1初始化*/
-    DLYB_OCTOSPI1_Calibration(1);		/*校验延迟模块*/
+    MX_OCTOSPI1_Init(); 
+
+	/* Calibration delay module */                
+    DLYB_OCTOSPI1_Calibration(1);		
 	psram_delay(100);
-    /*校准PSRAM*/
-    //uint8_t reg[2] = {0x00,0x00};
+
+    /*Calibration PSRAM*/
     uint8_t regs;
     regs = 0x08;
 	PsramRegWrite(&regs,0);
     psram_delay(500);
-	// PsramRegRead(reg,0);
-    // psram_delay(500);
-    // while(reg[0] != 0x08)
-    // {
-    //     PsramRegWrite(&regs,0);
-    //     psram_delay(500);
-    //     PsramRegRead(reg,0);
-    //     psram_delay(500);
-    // }
     TU_LOG1("0 : %02x\r\n1 : %02x\r\n",reg[0],reg[1]);
     psram_delay(500);
+
+	/* Memory Map */
     EnableMemMapped();
     psram_delay(500);
 }

@@ -1,26 +1,28 @@
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2018 Ha Thach for Adafruit Industries
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+/** 
+ * The MIT License (MIT) 
+ * 
+ * Author: Hongtai.liu (lht856@foxmail.com) 
+ * 
+ * Copyright (C) 2021 Seeed Technology Co.,Ltd. 
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy 
+ * of this software and associated documentation files (the "Software"), to deal 
+ * in the Software without restriction, including without limitation the rights 
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell 
+ * copies of the Software, and to permit persons to whom the Software is 
+ * furnished to do so, subject to the following conditions: 
+ * 
+ * The above copyright notice and this permission notice shall be included in 
+ * all copies or substantial portions of the Software. 
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE  
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN 
+ * THE SOFTWARE. 
+ */ 
 
 #include "board_api.h"
 #include "tusb.h"
@@ -34,6 +36,8 @@
 
 void board_init(void)
 {
+  TU_LOG1("Board Init\r\n");
+  
   /* Enable I-Cache---------------------------------------------------------*/
   SCB_EnableICache();
 
@@ -52,7 +56,7 @@ void board_init(void)
   // LED
   GPIO_InitStruct.Pin = LED_PIN;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(LED_PORT, &GPIO_InitStruct);
 
@@ -63,7 +67,6 @@ void board_init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(BUTTON_PORT, &GPIO_InitStruct);
   #endif
-  
 }
 
 void board_dfu_init(void)
@@ -99,7 +102,7 @@ extern void board_flash_memory_mapped(void);
 void board_app_jump(void)
 {
 
-  TU_LOG1("board_app_jump\n\r");
+  TU_LOG1("board_app_jump!!!\n\r");  
   board_flash_memory_mapped();
 
   volatile uint32_t const * app_vector = (volatile uint32_t const*) BOARD_FLASH_APP_START;
@@ -108,11 +111,13 @@ void board_app_jump(void)
   /* switch exception handlers to the application */
   SCB->VTOR = (uint32_t) BOARD_FLASH_APP_START;
 
+  TU_LOG1("%02lx    %02lx\n\r",app_vector[0],app_vector[1]); 
+
   // Set stack pointer
   __set_MSP(app_vector[0]);
-
   // Jump to Application Entry
-  asm("bx %0" ::"r"(app_vector[1]));
+  TU_LOG1("jump app\r\n"); 
+  asm( "bx %0" ::"r"(app_vector[1])); 
 }
 
 uint8_t board_usb_get_serial(uint8_t serial_id[16])
