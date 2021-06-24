@@ -135,16 +135,15 @@ int32_t W25Q128JVSIQ_Init(OSPI_HandleTypeDef *Ctx) {
 int32_t W25Q128JVSIQ_QuadWriteEnable(OSPI_HandleTypeDef *Ctx)
 {
 	unsigned char reg;
-  //W25Q128JVSIQ_WriteEnable(Ctx);
+  W25Q128JVSIQ_WriteEnable(Ctx);
 	W25Q128JVSIQ_ReadStatusRegister(Ctx, 2, &reg);
-	//TU_LOG1("REG2: %02x\n\r", reg);
+
 	if(reg != 0x02)
 	{
 		reg = 0x02;
 		W25Q128JVSIQ_WriteEnable(Ctx);
 		W25Q128JVSIQ_WriteStatusRegister(Ctx, 2, reg);
     W25Q128JVSIQ_ReadStatusRegister(Ctx, 2, &reg);
-	  //TU_LOG1("REG2: %02x\n\r", reg);
 	}
 
 

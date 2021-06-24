@@ -296,10 +296,10 @@ void psram_init(void)
 
     /*Calibration PSRAM*/
     uint8_t regs;
-    regs = 0x08;
+	regs = 0x08;
 	PsramRegWrite(&regs,0);
     psram_delay(500);
-    TU_LOG1("0 : %02x\r\n1 : %02x\r\n",reg[0],reg[1]);
+    
     psram_delay(500);
 
 	/* Memory Map */
