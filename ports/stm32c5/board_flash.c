@@ -39,8 +39,11 @@
 
 #define FLASH_BASE_ADDR         0x08000000UL
 
+// STM32C5 uses FLASH_PAGE_SIZE (same as sector size in UF2 context)
+#define FLASH_SECTOR_SIZE       FLASH_PAGE_SIZE
+
 // STM32C5A3 WRP: each group covers 2 pages (FLASH_WRP_GROUP_WIDTH = 2)
-// For 24KB bootloader (3 pages): need WRP bits 0-1 to protect pages 0-3 (32KB)
+// For 32KB bootloader (4 pages): need WRP bits 0-1 to protect pages 0-3 (32KB)
 #define BOARD_FLASH_PROTECT_MASK  0x3u
 
 // STM32C5A3: 1 MB Flash, 8 KB pages = 128 pages total
@@ -109,7 +112,8 @@ static void flash_write(uint32_t dst, const uint8_t* src, int len) {
   HAL_FLASH_SetProgrammingMode(&hflash, HAL_FLASH_PROGRAM_QUADWORD);
 
   // Write using new by-address API
-  hal_status_t status = HAL_FLASH_ProgramByAddr(&hflash, dst, len, src);
+  // HAL_FLASH_ProgramByAddr(hflash, addr, p_data, size_byte, timeout)
+  hal_status_t status = HAL_FLASH_ProgramByAddr(&hflash, dst, (const uint32_t *)(uintptr_t) src, len, 1000);
   if (status != HAL_OK) {
     TUF2_LOG1("Failed to write flash at address %08lX\r\n", dst);
   }
@@ -238,7 +242,7 @@ void board_self_update(const uint8_t* bootloader_bin, uint32_t bootloader_len) {
 
   uint32_t null_arr[4] = { 0 };
   HAL_FLASH_SetProgrammingMode(&hflash, HAL_FLASH_PROGRAM_QUADWORD);
-  HAL_FLASH_ProgramByAddr(&hflash, BOARD_FLASH_APP_START, 16, (const uint8_t*)null_arr);
+  HAL_FLASH_ProgramByAddr(&hflash, BOARD_FLASH_APP_START, (const uint32_t *)(uintptr_t) null_arr, 16, 1000);
 
   HAL_FLASH_ITF_Lock(HAL_FLASH);
 

@@ -7,31 +7,18 @@
 #define BOARD_H_
 
 //--------------------------------------------------------------------+
-// LED
+// LED - XIAO C5 User LED on PA5
 //--------------------------------------------------------------------+
-// XIAO C5: User LED on PA5 (adjust per actual schematic)
-#define LED_PORT              GPIOA
-#define LED_PIN               GPIO_PIN_5
+#define LED_PORT              HAL_GPIOA
+#define LED_PIN               HAL_GPIO_PIN_5
 #define LED_STATE_ON          1
 
 //--------------------------------------------------------------------+
-// Button
+// Button - XIAO C5 User button (if available)
 //--------------------------------------------------------------------+
-// XIAO C5: User button on PC13 (adjust per actual schematic)
-#define BUTTON_PORT           GPIOC
-#define BUTTON_PIN            GPIO_PIN_13
+#define BUTTON_PORT           HAL_GPIOC
+#define BUTTON_PIN            HAL_GPIO_PIN_13
 #define BUTTON_STATE_ACTIVE   0
-
-//--------------------------------------------------------------------+
-// UART (debug, optional)
-//--------------------------------------------------------------------+
-// #define UART_DEV              USART2
-// #define UART_CLOCK_ENABLE     __HAL_RCC_USART2_CLK_ENABLE
-// #define UART_CLOCK_DISABLE    __HAL_RCC_USART2_CLK_DISABLE
-// #define UART_GPIO_PORT        GPIOA
-// #define UART_GPIO_AF          GPIO_AF7_USART2
-// #define UART_TX_PIN           GPIO_PIN_2
-// #define UART_RX_PIN           GPIO_PIN_3
 
 //--------------------------------------------------------------------+
 // Neopixel
@@ -62,14 +49,7 @@
 //--------------------------------------------------------------------+
 static inline void SystemClock_Config(void)
 {
-  // STM32C5 clock configuration
-  // Default after reset: HSI (48 MHz via HSIDIV3)
-  // For bootloader: use default HSI clock, configure USB 48MHz from HSI144/3
-
-  // Note: Full clock configuration with PLL for 144MHz can be done here.
-  // For bootloader simplicity, the default HSI-derived 48MHz is sufficient
-  // for USB operation.
-
+  // STM32C5: Default HSI-derived 48MHz is sufficient for bootloader USB operation
   // Configure USB 48MHz clock source (CK48) using HSI144/3
   HAL_RCC_CK48_SetKernelClkSource(HAL_RCC_CK48_CLK_SRC_HSIDIV3);
 

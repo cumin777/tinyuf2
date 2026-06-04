@@ -96,18 +96,6 @@ extern "C" {
 /* Assert */
 #define assert_param(expr) ((void)0U)
 
-/* Includes */
-#include "stm32c5xx_hal_rcc.h"
-#include "stm32c5xx_hal_gpio.h"
-#include "stm32c5xx_hal_flash.h"
-#include "stm32c5xx_hal_flash_itf.h"
-#include "stm32c5xx_hal_pwr.h"
-#include "stm32c5xx_hal_cortex.h"
-
-#ifdef USE_HAL_UART_MODULE
-#include "stm32c5xx_hal_uart.h"
-#endif
-
 #ifdef __cplusplus
 }
 #endif

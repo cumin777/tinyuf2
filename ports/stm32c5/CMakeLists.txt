@@ -22,8 +22,10 @@ family_flash_jlink(tinyuf2)
 family_flash_stlink(tinyuf2)
 
 #------------------------------------
-# Application
+# Application (demo apps require lib/uf2 submodule for UF2 generation)
 #------------------------------------
-add_subdirectory(${TOP}/apps/self_update ${CMAKE_BINARY_DIR}/apps/self_update)
-add_subdirectory(${TOP}/apps/blinky ${CMAKE_BINARY_DIR}/apps/blinky)
-add_subdirectory(${TOP}/apps/erase_firmware ${CMAKE_BINARY_DIR}/apps/erase_firmware)
+if(EXISTS ${TOP}/lib/uf2/utils/uf2conv.py)
+  add_subdirectory(${TOP}/apps/self_update ${CMAKE_BINARY_DIR}/apps/self_update)
+  add_subdirectory(${TOP}/apps/blinky ${CMAKE_BINARY_DIR}/apps/blinky)
+  add_subdirectory(${TOP}/apps/erase_firmware ${CMAKE_BINARY_DIR}/apps/erase_firmware)
+endif()

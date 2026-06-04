@@ -24,7 +24,7 @@
  */
 
 #include "board_api.h"
-#include "stm32c5xx_hal.h"
+#include "stm32_hal.h"
 
 #ifndef BUILD_NO_TINYUSB
 #include "tusb.h"
@@ -45,94 +45,55 @@
   #define USE_UART 0
 #endif
 
-#if USE_UART
-UART_HandleTypeDef UartHandle = {
-  .Instance        = UART_DEV,
-  .Init.BaudRate   = BOARD_UART_BAUDRATE,
-  .Init.WordLength = UART_WORDLENGTH_8B,
-  .Init.StopBits   = UART_STOPBITS_1,
-  .Init.Parity     = UART_PARITY_NONE,
-  .Init.HwFlowCtl  = UART_HWCONTROL_NONE,
-  .Init.Mode       = UART_MODE_TX_RX,
-  .Init.OverSampling = UART_OVERSAMPLING_16,
-  .AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT
-};
-#endif
-
 void board_init(void)
 {
 #ifdef BUILD_APPLICATION
-  // system_stm32c5xx.c: SystemInit() will reset vector table, set it here if we are building application
   SCB->VTOR = (uint32_t) BOARD_FLASH_APP_START;
 #endif
 
-  HAL_Init();           // required for HAL_RCC_Osc TODO check with freeRTOS
+  HAL_Init();
   SystemClock_Config(); // implemented in board.h
   SystemCoreClockUpdate();
 
   // Enable All GPIOs clocks
-  __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
-  __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOD_CLK_ENABLE();
+  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);
+  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
+  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOC);
+  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOD);
+  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOH);
 
-#ifdef __HAL_RCC_GPIOE_CLK_ENABLE
-  __HAL_RCC_GPIOE_CLK_ENABLE();
-#endif
-
-#ifdef __HAL_RCC_GPIOG_CLK_ENABLE
-  __HAL_RCC_GPIOG_CLK_ENABLE();
-#endif
-
-#ifdef __HAL_RCC_GPIOH_CLK_ENABLE
-  __HAL_RCC_GPIOH_CLK_ENABLE();
-#endif
-
-#ifdef __HAL_RCC_GPIOI_CLK_ENABLE
-  __HAL_RCC_GPIOI_CLK_ENABLE();
-#endif
-
-  GPIO_InitTypeDef GPIO_InitStruct;
-
-  // LED
-  GPIO_InitStruct.Pin = LED_PIN;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-  HAL_GPIO_Init(LED_PORT, &GPIO_InitStruct);
+  // LED - configure as output push-pull
+  hal_gpio_config_t gpio_cfg = {
+    .mode        = HAL_GPIO_MODE_OUTPUT,
+    .pull        = HAL_GPIO_PULL_UP,
+    .speed       = HAL_GPIO_SPEED_FREQ_HIGH,
+    .output_type = HAL_GPIO_OUTPUT_PUSHPULL,
+    .alternate   = 0,
+    .init_state  = HAL_GPIO_PIN_RESET,
+  };
+  HAL_GPIO_Init(LED_PORT, LED_PIN, &gpio_cfg);
 
   board_led_write(false);
 
-  // Button
-  GPIO_InitStruct.Pin = BUTTON_PIN;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = BUTTON_STATE_ACTIVE ? GPIO_PULLDOWN : GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-  HAL_GPIO_Init(BUTTON_PORT, &GPIO_InitStruct);
-
-  #if USE_UART
-  UART_CLOCK_ENABLE();
-  // UART
-  GPIO_InitStruct.Pin = UART_TX_PIN | UART_RX_PIN;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-  GPIO_InitStruct.Alternate = UART_GPIO_AF;
-  HAL_GPIO_Init(UART_GPIO_PORT, &GPIO_InitStruct);
-  HAL_UART_Init(&UartHandle);
-  #endif
+  // Button - configure as input
+  gpio_cfg.mode = HAL_GPIO_MODE_INPUT;
+  gpio_cfg.pull = BUTTON_STATE_ACTIVE ? HAL_GPIO_PULL_DOWN : HAL_GPIO_PULL_UP;
+  gpio_cfg.speed = HAL_GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(BUTTON_PORT, BUTTON_PIN, &gpio_cfg);
 }
 
 void board_dfu_init(void)
 {
-  GPIO_InitTypeDef  GPIO_InitStruct;
-
-  /* Configure DM DP Pins */
-  GPIO_InitStruct.Pin = (GPIO_PIN_11 | GPIO_PIN_12);
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  // Configure DM DP Pins as input
+  hal_gpio_config_t gpio_cfg = {
+    .mode        = HAL_GPIO_MODE_INPUT,
+    .pull        = HAL_GPIO_PULL_NO,
+    .speed       = HAL_GPIO_SPEED_FREQ_HIGH,
+    .output_type = HAL_GPIO_OUTPUT_PUSHPULL,
+    .alternate   = 0,
+    .init_state  = HAL_GPIO_PIN_RESET,
+  };
+  HAL_GPIO_Init(HAL_GPIOA, HAL_GPIO_PIN_11 | HAL_GPIO_PIN_12, &gpio_cfg);
 
   // STM32C5: No VDDUSB enable needed - USB transceiver powered directly by VDD
 
@@ -180,41 +141,16 @@ void board_teardown(void) {
   HAL_GPIO_DeInit(LED_PORT, LED_PIN);
 #endif
 
-#if NEOPIXEL_NUMBER
-  HAL_GPIO_DeInit(NEOPIXEL_PORT, NEOPIXEL_PIN);
-#endif
-
-#if USE_UART
-  HAL_UART_DeInit(&UartHandle);
-  HAL_GPIO_DeInit(UART_GPIO_PORT, UART_TX_PIN | UART_RX_PIN);
-  UART_CLOCK_DISABLE();
-#endif
-
   HAL_RCC_USB_DisableClock();
-  HAL_GPIO_DeInit(GPIOA, GPIO_PIN_11 | GPIO_PIN_12); // USB
+  HAL_GPIO_DeInit(HAL_GPIOA, HAL_GPIO_PIN_11 | HAL_GPIO_PIN_12); // USB
 
-  __HAL_RCC_GPIOA_CLK_DISABLE();
-  __HAL_RCC_GPIOB_CLK_DISABLE();
-  __HAL_RCC_GPIOC_CLK_DISABLE();
-  __HAL_RCC_GPIOD_CLK_DISABLE();
+  LL_AHB2_GRP1_DisableClock(LL_AHB2_GRP1_PERIPH_GPIOA);
+  LL_AHB2_GRP1_DisableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
+  LL_AHB2_GRP1_DisableClock(LL_AHB2_GRP1_PERIPH_GPIOC);
+  LL_AHB2_GRP1_DisableClock(LL_AHB2_GRP1_PERIPH_GPIOD);
+  LL_AHB2_GRP1_DisableClock(LL_AHB2_GRP1_PERIPH_GPIOH);
 
-#ifdef __HAL_RCC_GPIOE_CLK_DISABLE
-  __HAL_RCC_GPIOE_CLK_DISABLE();
-#endif
-
-#ifdef __HAL_RCC_GPIOG_CLK_DISABLE
-  __HAL_RCC_GPIOG_CLK_DISABLE();
-#endif
-
-#ifdef __HAL_RCC_GPIOH_CLK_DISABLE
-  __HAL_RCC_GPIOH_CLK_DISABLE();
-#endif
-
-#ifdef __HAL_RCC_GPIOI_CLK_DISABLE
-  __HAL_RCC_GPIOI_CLK_DISABLE();
-#endif
-
-  HAL_RCC_DeInit();
+  HAL_RCC_Reset();
   HAL_DeInit();
 
   SysTick->CTRL = 0;
@@ -262,13 +198,13 @@ uint8_t board_usb_get_serial(uint8_t serial_id[16])
 
 void board_led_write(uint32_t state)
 {
-  HAL_GPIO_WritePin(LED_PORT, LED_PIN, state ? LED_STATE_ON : (1-LED_STATE_ON));
+  HAL_GPIO_WritePin(LED_PORT, LED_PIN, state ? HAL_GPIO_PIN_SET : HAL_GPIO_PIN_RESET);
 }
 
 #if NEOPIXEL_NUMBER
-#define MAGIC_800_INT   900000  // ~1.11 us -> 1.2  field
-#define MAGIC_800_T0H  2800000  // ~0.36 us -> 0.44 field
-#define MAGIC_800_T1H  1350000  // ~0.74 us -> 0.84 field
+#define MAGIC_800_INT   900000
+#define MAGIC_800_T0H  2800000
+#define MAGIC_800_T1H  1350000
 
 static inline uint8_t apply_percentage(uint8_t brightness)
 {
@@ -281,7 +217,6 @@ void board_rgb_write(uint8_t const rgb[]) {
   uint32_t const t0 = sys_freq / MAGIC_800_T0H;
   uint32_t const t1 = sys_freq / MAGIC_800_T1H;
 
-  // neopixel color order is GRB
   uint8_t const colors[3] = {apply_percentage(rgb[1]), apply_percentage(rgb[0]),
                              apply_percentage(rgb[2])};
 
@@ -289,7 +224,6 @@ void board_rgb_write(uint8_t const rgb[]) {
   uint32_t start;
   uint32_t cyc;
 
-  // Enable DWT in debug core
   CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
   DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
   DWT->CYCCNT = 0;
@@ -304,11 +238,11 @@ void board_rgb_write(uint8_t const rgb[]) {
       cyc = (color & color_mask) ? t1 : t0;
       start = DWT->CYCCNT;
 
-      HAL_GPIO_WritePin(NEOPIXEL_PORT, NEOPIXEL_PIN, 1);
+      HAL_GPIO_WritePin(NEOPIXEL_PORT, NEOPIXEL_PIN, HAL_GPIO_PIN_SET);
       while ((DWT->CYCCNT - start) < cyc)
         ;
 
-      HAL_GPIO_WritePin(NEOPIXEL_PORT, NEOPIXEL_PIN, 0);
+      HAL_GPIO_WritePin(NEOPIXEL_PORT, NEOPIXEL_PIN, HAL_GPIO_PIN_RESET);
       while ((DWT->CYCCNT - start) < interval)
         ;
 
@@ -350,13 +284,8 @@ void SysTick_Handler(void) {
 
 int board_uart_write(void const * buf, int len)
 {
-#if USE_UART
-  HAL_UART_Transmit(&UartHandle, (uint8_t*) buf, len, 0xffff);
-  return len;
-#else
   (void) buf; (void) len;
   return 0;
-#endif
 }
 
 #ifndef BUILD_NO_TINYUSB
@@ -368,7 +297,46 @@ void USB_DRD_FS_IRQHandler(void) {
 
 // Required by __libc_init_array in startup code if we are compiling using
 // -nostdlib/-nostartfiles.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-prototypes"
 void _init(void)
 {
 
 }
+
+//--------------------------------------------------------------------+
+// C runtime entry point (called by CMSIS startup Reset_Handler)
+// Since we use -nostartfiles, we must provide _start ourselves.
+//--------------------------------------------------------------------+
+extern int main(void);
+extern void __libc_init_array(void);
+
+// Linker-defined symbols for data/bss initialization
+extern uint32_t _sidata, _sdata, _edata;
+extern uint32_t _sbss, _ebss;
+
+void _start(void)
+{
+  // Copy .data section from flash to RAM
+  uint32_t *src = &_sidata;
+  uint32_t *dst = &_sdata;
+  while (dst < &_edata) {
+    *dst++ = *src++;
+  }
+
+  // Zero .bss section
+  dst = &_sbss;
+  while (dst < &_ebss) {
+    *dst++ = 0;
+  }
+
+  // Call C++ constructors / __attribute__((constructor))
+  __libc_init_array();
+
+  // Call main application
+  main();
+
+  // Should never return, but loop if it does
+  while (1) {}
+}
+#pragma GCC diagnostic pop

@@ -30,7 +30,7 @@
 #endif
 
 #include "stm32c5xx.h"
-#include "stm32c5xx_hal_conf.h"
+#include "stm32_hal.h"
 
 #include "board.h"
 

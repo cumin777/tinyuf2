@@ -1,6 +1,6 @@
 # STM32C5A3ZGT6: 1MB Flash, 256KB RAM
-# Bootloader size: 24KB (3 x 8KB pages)
-set(LD_FLASH_BOOT_SIZE 24K)
+# Bootloader size: 32KB (4 x 8KB pages) - larger HAL needs more space
+set(LD_FLASH_BOOT_SIZE 32K)
 set(LD_RAM_SIZE 256K)
 set(JLINK_DEVICE stm32c5a3zg)
 
