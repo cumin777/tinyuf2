@@ -133,122 +133,51 @@ bool board_app_valid(void)
 }
 
 void board_teardown(void) {
-  // 1. De-init peripherals (GPIO, USB) while clocks are still running
 #ifdef BUTTON_PIN
   HAL_GPIO_DeInit(BUTTON_PORT, BUTTON_PIN);
 #endif
 
 #ifdef LED_PIN
-  HAL_GPIO_WritePin(LED_PORT, LED_PIN, HAL_GPIO_PIN_RESET);
   HAL_GPIO_DeInit(LED_PORT, LED_PIN);
 #endif
 
-  // 2. Disable USB before turning off its clock
   HAL_RCC_USB_DisableClock();
   HAL_GPIO_DeInit(HAL_GPIOA, HAL_GPIO_PIN_11 | HAL_GPIO_PIN_12); // USB
 
-  // 3. Disable all GPIO clocks
   LL_AHB2_GRP1_DisableClock(LL_AHB2_GRP1_PERIPH_GPIOA);
   LL_AHB2_GRP1_DisableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
   LL_AHB2_GRP1_DisableClock(LL_AHB2_GRP1_PERIPH_GPIOC);
   LL_AHB2_GRP1_DisableClock(LL_AHB2_GRP1_PERIPH_GPIOD);
   LL_AHB2_GRP1_DisableClock(LL_AHB2_GRP1_PERIPH_GPIOH);
 
-  // 4. Stop SysTick explicitly
+  HAL_RCC_Reset();
+  HAL_DeInit();
+
   SysTick->CTRL = 0;
   SysTick->LOAD = 0;
   SysTick->VAL = 0;
-
-  // 5. De-init HAL state
-  //    Note: intentionally NOT calling HAL_RCC_Reset() here.
-  //    The app's clock driver (e.g. Zephyr stm32_clock_control_init)
-  //    performs a full clock reconfiguration from scratch.
-  //    HAL_RCC_Reset() can leave the RCC in a state that the app driver
-  //    does not handle correctly (e.g. HSIS not running at expected freq).
-  HAL_DeInit();
-}
-
-static void led_delay_cycles(uint32_t cycles) {
-  for (volatile uint32_t i = 0; i < cycles; i++) {
-    __NOP();
-  }
-}
-
-static void led_prepare_for_blink(void) {
-  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);
-
-  GPIOA->MODER = (GPIOA->MODER & ~(3U << (5U * 2U))) | (1U << (5U * 2U));
-  GPIOA->OTYPER &= ~(1U << 5U);
-  GPIOA->OSPEEDR |= (3U << (5U * 2U));
-  GPIOA->PUPDR &= ~(3U << (5U * 2U));
-}
-
-static void led_blink_blocking(uint8_t count) {
-  led_prepare_for_blink();
-
-  for (uint8_t i = 0; i < count; i++) {
-    GPIOA->BSRR = (1U << 5U);
-    led_delay_cycles(800000U);
-    GPIOA->BSRR = (1U << (5U + 16U));
-    led_delay_cycles(800000U);
-  }
-
-  led_delay_cycles(1800000U);
-  GPIOA->BSRR = (1U << (5U + 16U));
-}
-
-static void led_panic_blink(uint8_t count) {
-  for (uint8_t i = 0; i < 4; i++) {
-    led_blink_blocking(count);
-  }
 }
 
 void board_app_jump(void)
 {
-  typedef void (*FunctionPointer)(void);
-
   volatile uint32_t const * app_vector = (volatile uint32_t const*) BOARD_FLASH_APP_START;
   uint32_t sp = app_vector[0];
   uint32_t app_entry = app_vector[1];
 
-  if ((sp & 0xff000003U) != 0x20000000U) {
-    led_panic_blink(2);
+  // Disable all Interrupts
+  for (uint8_t i=0; i<sizeof(NVIC->ICER)/sizeof(NVIC->ICER[0]); i++) {
+    NVIC->ICER[i] = 0xFFFFFFFFu;
   }
 
-  if ((app_entry < BOARD_FLASH_APP_START) || (app_entry > (BOARD_FLASH_ADDR_ZERO + BOARD_FLASH_SIZE)) ||
-      ((app_entry & 0x1U) == 0U)) {
-    led_panic_blink(3);
-  }
-
-  // board_teardown() has already done the DeInit equivalent before this call.
-
-  // 1. Disable all NVIC interrupts and clear pending flags
-  //    This is critical: after teardown, stale pending interrupts in the NVIC
-  //    could fire as soon as interrupts are enabled, but with the wrong VTOR.
-  for (int i = 0; i < 8; i++) {
-    NVIC->ICER[i] = 0xFFFFFFFFU;  // Disable all interrupt lines
-    NVIC->ICPR[i] = 0xFFFFFFFFU;  // Clear all pending flags
-  }
-
-  // 2. Set VTOR to the application's vector table BEFORE the jump.
-  //    Without this, VTOR still points to 0x08000000 (bootloader) and any
-  //    interrupt between the jump and the app's early init would use the
-  //    wrong vector table, causing a HardFault.
+  /* switch exception handlers to the application */
   SCB->VTOR = (uint32_t) BOARD_FLASH_APP_START;
-  __DSB();
-  __ISB();
 
-  // 3. Ensure MSP is active (SPSEL = 0) before jumping
-  __set_CONTROL(0);
-  __ISB();
-
-  // 4. Set MSP and jump — do NOT __enable_irq() here, let the app's
-  //    startup code handle interrupt enabling at the right time.
+  // Set stack pointer
   __set_MSP(sp);
-  FunctionPointer jump_to_app = (FunctionPointer) app_entry;
-  jump_to_app();
+  __set_PSP(sp);
 
-  led_panic_blink(4);
+  // Jump to Application Entry
+  asm("bx %0" ::"r"(app_entry));
 }
 
 uint8_t board_usb_get_serial(uint8_t serial_id[16])
