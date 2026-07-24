@@ -1,8 +1,11 @@
-/ports/*/_build/
-/ports/esp32s2/self_update/_build/
-/ports/*/_bin/
 /sdkconfig
-.settings/
 *.o
 *.d
 *.P
+_build/
+_bin/
+*.h~
+*.cmake~
+sdkconfig~
+*.yml~
+ports/espressif/apps/self_update/main/bootloader_bin.c

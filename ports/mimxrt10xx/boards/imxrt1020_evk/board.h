@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2020 Ha Thach for Adafruit Industries
@@ -34,33 +34,18 @@
 //--------------------------------------------------------------------+
 // LED
 //--------------------------------------------------------------------+
-
-#define LED_PINMUX            IOMUXC_GPIO_AD_B0_05_GPIO1_IO05
-#define LED_PORT              GPIO1
-#define LED_PIN               5
+#define LED_PORT     BOARD_INITPINS_USER_LED_PERIPHERAL
+#define LED_PIN      BOARD_INITPINS_USER_LED_CHANNEL
 #define LED_STATE_ON          0
 
 //--------------------------------------------------------------------+
 // Neopixel
 //--------------------------------------------------------------------+
-
-// Number of neopixels
-#define NEOPIXEL_NUMBER       0
-
-//--------------------------------------------------------------------+
-// Button
-//--------------------------------------------------------------------+
-
-// SW8 button
-#define BUTTON_PINMUX         IOMUXC_SNVS_WAKEUP_GPIO5_IO00
-#define BUTTON_PORT           GPIO5
-#define BUTTON_PIN            0
-#define BUTTON_STATE_ACTIVE   0
+#define NEOPIXEL_NUMBER 0 // Number of neopixels
 
 //--------------------------------------------------------------------+
 // USB UF2
 //--------------------------------------------------------------------+
-
 #define USB_VID           0x239A
 #define USB_PID           0x0081
 #define USB_MANUFACTURER  "NXP"
@@ -70,5 +55,10 @@
 #define UF2_BOARD_ID      "MIMXRT1020-EVK-revA"
 #define UF2_VOLUME_LABEL  "RT1020BOOT"
 #define UF2_INDEX_URL     "https://www.nxp.com/part/MIMXRT1020-EVK#/"
+
+//--------------------------------------------------------------------+
+// UART
+//--------------------------------------------------------------------+
+#define UART_DEV              LPUART1
 
 #endif /* BOARD_H_ */

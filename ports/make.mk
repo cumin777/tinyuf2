@@ -2,6 +2,12 @@
 # Common make definition for all
 # ---------------------------------------
 
+PYTHON3 ?= python3
+MKDIR = mkdir
+SED = sed
+CP = cp
+RM = rm
+
 CC = $(CROSS_COMPILE)gcc
 OBJCOPY = $(CROSS_COMPILE)objcopy
 SIZE = $(CROSS_COMPILE)size
@@ -19,6 +25,8 @@ TOP := $(patsubst %/ports/make.mk,%,$(TOP))
 
 CURRENT_PATH := $(shell realpath --relative-to=$(TOP) `pwd`)
 
+UF2CONV_PY = $(PYTHON3) $(TOP)/lib/uf2/utils/uf2conv.py
+
 #-------------- Handy check parameter function ------------
 check_defined = \
     $(strip $(foreach 1,$1, \
@@ -30,7 +38,7 @@ __check_defined = \
 #-------------- Select the board to build for. ------------
 
 # PORT is default to directory name containing the Makefile
-# can be set manually by custome build such as flash_nuke
+# can be set manually by custom build such as flash_nuke
 PORT ?= $(notdir $(shell pwd))
 PORT_DIR = ports/$(PORT)
 BOARD_DIR = $(PORT_DIR)/boards/$(BOARD)
@@ -40,29 +48,15 @@ ifeq ($(wildcard $(TOP)/$(BOARD_DIR)/),)
   $(error Invalid BOARD specified)
 endif
 
-
-# Fetch submodules depended by family
-fetch_submodule_if_empty = $(if $(wildcard $(TOP)/lib/$1/*),,$(info $(shell git -C $(TOP)/lib submodule update --init $1)))
-ifdef GIT_SUBMODULES
-  $(foreach s,$(GIT_SUBMODULES),$(call fetch_submodule_if_empty,$(s)))
-endif
-
 # Build directory
 BUILD = _build/$(BOARD)
 BIN = $(TOP)/$(PORT_DIR)/_bin/$(BOARD)
 
-# can be set manually by custome build such as flash_nuke
+# can be set manually by custom build such as flash_nuke
 OUTNAME ?= tinyuf2-$(BOARD)
-
-# UF2 version with git tag and submodules
-GIT_VERSION := $(shell git describe --dirty --always --tags)
-GIT_SUBMODULE_VERSIONS := $(shell git submodule status $(addprefix ../../lib/,$(GIT_SUBMODULES)) | cut -d" " -f3,4 | paste -s -d" " -)
-GIT_SUBMODULE_VERSIONS := $(subst ../../lib/,,$(GIT_SUBMODULE_VERSIONS))
 
 CFLAGS += \
   -DBOARD_UF2_FAMILY_ID=$(UF2_FAMILY_ID) \
-  -DUF2_VERSION_BASE='"$(GIT_VERSION)"'\
-  -DUF2_VERSION='"$(GIT_VERSION) - $(GIT_SUBMODULE_VERSIONS)"'
 
 #-------------- Bootloader --------------
 # skip bootloader src if building application
@@ -72,18 +66,32 @@ CFLAGS += -DBUILD_APPLICATION
 
 else
 
-# Bootloader src, board folder and TinyUSB stack
+# UF2 version with git tag and submodules
+GIT_VERSION := $(shell git describe --dirty --always --tags)
+GIT_SUBMODULE_VERSIONS := $(shell git submodule status $(addprefix ../../lib/,$(GIT_SUBMODULES)) | cut -b 43- | paste -s -d" " -)
+GIT_SUBMODULE_VERSIONS := $(subst ../../lib/,,$(GIT_SUBMODULE_VERSIONS))
+
+CFLAGS += \
+  -DUF2_VERSION_BASE='"$(GIT_VERSION)"'\
+  -DUF2_VERSION='"$(GIT_VERSION) - $(GIT_SUBMODULE_VERSIONS)"'\
+
+# Bootloader src and TinyUSB stack
 SRC_C += \
-  $(subst $(TOP)/,,$(wildcard $(TOP)/src/*.c)) \
-  $(subst $(TOP)/,,$(wildcard $(TOP)/$(BOARD_DIR)/*.c))
+  src/ghostfat.c \
+  src/images.c \
+  src/main.c \
+  src/msc.c \
+  src/screen.c \
+  src/usb_descriptors.c
+
+endif # BUILD_APPLICATION
 
 # Include
 INC += \
   $(TOP)/src \
+  $(TOP)/src/favicon \
   $(TOP)/$(PORT_DIR) \
   $(TOP)/$(BOARD_DIR)
-
-endif # BUILD_APPLICATION
 
 #-------------- TinyUSB --------------
 # skip tinyusb src if building application such as erase firmware
@@ -103,10 +111,7 @@ SRC_C += \
 	$(TINYUSB_DIR)/class/cdc/cdc_device.c \
 	$(TINYUSB_DIR)/class/dfu/dfu_rt_device.c \
 	$(TINYUSB_DIR)/class/hid/hid_device.c \
-	$(TINYUSB_DIR)/class/midi/midi_device.c \
 	$(TINYUSB_DIR)/class/msc/msc_device.c \
-	$(TINYUSB_DIR)/class/net/net_device.c \
-	$(TINYUSB_DIR)/class/usbtmc/usbtmc_device.c \
 	$(TINYUSB_DIR)/class/vendor/vendor_device.c
 
 INC += $(TOP)/$(TINYUSB_DIR)
@@ -171,11 +176,12 @@ LDFLAGS += \
 # libc
 LIBS += -lgcc -lm -lc
 
-# nanolib
+# nanolib: TODO remove
 ifneq ($(SKIP_NANOLIB), 1)
   LDFLAGS += -specs=nosys.specs -specs=nano.specs
   LIBS += -lnosys
 endif
 
 # Board specific define
+# TODO should be moved to port.mk
 include $(TOP)/$(BOARD_DIR)/board.mk

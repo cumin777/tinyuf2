@@ -11,19 +11,19 @@
 #define __FLEXSPI_NOR_FLASH_H__
 
 #include "fsl_common.h"
-//#include "bootloader_common.h"
 #include "bl_flexspi.h"
 
-/*  */
-#define NOR_CMD_INDEX_READ          CMD_INDEX_READ        //!< 0
-#define NOR_CMD_INDEX_READSTATUS    CMD_INDEX_READSTATUS  //!< 1
-#define NOR_CMD_INDEX_WRITEENABLE   CMD_INDEX_WRITEENABLE //!< 2
-#define NOR_CMD_INDEX_ERASESECTOR   3                     //!< 3
-#define NOR_CMD_INDEX_PAGEPROGRAM   CMD_INDEX_WRITE       //!< 4
-#define NOR_CMD_INDEX_CHIPERASE     5                     //!< 5
-#define NOR_CMD_INDEX_DUMMY         6                     //!< 6
-#define NOR_CMD_INDEX_ERASEBLOCK    7                     //!< 7
+// Seems to be not used !
+//#define NOR_CMD_INDEX_READ          CMD_INDEX_READ        //!< 0
+//#define NOR_CMD_INDEX_READSTATUS    CMD_INDEX_READSTATUS  //!< 1
+//#define NOR_CMD_INDEX_WRITEENABLE   CMD_INDEX_WRITEENABLE //!< 2
+//#define NOR_CMD_INDEX_ERASESECTOR   3                     //!< 3
+//#define NOR_CMD_INDEX_PAGEPROGRAM   CMD_INDEX_WRITE       //!< 4
+//#define NOR_CMD_INDEX_CHIPERASE     5                     //!< 5
+//#define NOR_CMD_INDEX_DUMMY         6                     //!< 6
+//#define NOR_CMD_INDEX_ERASEBLOCK    7                     //!< 7
 
+// Command index in flexspi_nor_config_t's look-up table
 #define NOR_CMD_LUT_SEQ_IDX_READ              CMD_LUT_SEQ_IDX_READ        //!< 0  READ LUT sequence id in lookupTable stored in config block
 #define NOR_CMD_LUT_SEQ_IDX_READSTATUS        CMD_LUT_SEQ_IDX_READSTATUS  //!< 1  Read Status LUT sequence id in lookupTable stored in config block
 #define NOR_CMD_LUT_SEQ_IDX_READSTATUS_XPI    2                           //!< 2  Read status DPI/QPI/OPI sequence id in lookupTable stored in config block
@@ -46,7 +46,7 @@ enum _flexspi_nor_status
     kStatus_FLEXSPINOR_EraseAllFail             = MAKE_STATUS(kStatusGroup_FLEXSPINOR, 2),  //!< Status for Chip Erase failure
     kStatus_FLEXSPINOR_WaitTimeout              = MAKE_STATUS(kStatusGroup_FLEXSPINOR, 3),  //!< Status for timeout
     kStatus_FlexSPINOR_NotSupported             = MAKE_STATUS(kStatusGroup_FLEXSPINOR, 4),  // Status for PageSize overflow
-    kStatus_FlexSPINOR_WriteAlignmentError      = MAKE_STATUS(kStatusGroup_FLEXSPINOR, 5),  //!< Status for Alignement error
+    kStatus_FlexSPINOR_WriteAlignmentError      = MAKE_STATUS(kStatusGroup_FLEXSPINOR, 5),  //!< Status for Alignment error
     kStatus_FlexSPINOR_CommandFailure           = MAKE_STATUS(kStatusGroup_FLEXSPINOR, 6),  //!< Status for Erase/Program Verify Error
     kStatus_FlexSPINOR_SFDP_NotFound            = MAKE_STATUS(kStatusGroup_FLEXSPINOR, 7),  //!< Status for SFDP read failure
     kStatus_FLEXSPINOR_Unsupported_SFDP_Version = MAKE_STATUS(kStatusGroup_FLEXSPINOR, 8),  //!< Status for Unrecognized SFDP version
@@ -185,50 +185,9 @@ typedef struct _flexspi_nor_config
     uint8_t serialNorType;          //!< Serial NOR Flash type: 0/1/2/3
     uint8_t needExitNoCmdMode;      //!< Need to exit NoCmd mode before other IP command
     uint8_t halfClkForNonReadCmd;   //!< Half the Serial Clock for non-read command: true/false
-    uint8_t needRestoreNoCmdMode;   //!< Need to Restore NoCmd mode after IP commmand execution
+    uint8_t needRestoreNoCmdMode;   //!< Need to Restore NoCmd mode after IP command execution
     uint32_t blockSize;             //!< Block size
     uint32_t reserve2[11];          //!< Reserved for future use
 } flexspi_nor_config_t;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-//!@brief Initialize Serial NOR devices via FlexSPI
-status_t flexspi_nor_flash_init(uint32_t instance, flexspi_nor_config_t *config);
-
-//!@brief Program data to Serial NOR via FlexSPI
-status_t flexspi_nor_flash_page_program(uint32_t instance, flexspi_nor_config_t *config, uint32_t dstAddr, const uint32_t *src);
-
-//!@brief Erase all the Serial NOR devices connected on FlexSPI
-status_t flexspi_nor_flash_erase_all(uint32_t instance, flexspi_nor_config_t *config);
-
-//!@brief Erase one sector specified by address
-status_t flexspi_nor_flash_erase_sector(uint32_t instance, flexspi_nor_config_t *config, uint32_t address);
-
-//!@brief Erase one block specified by address
-status_t flexspi_nor_flash_erase_block(uint32_t instance, flexspi_nor_config_t *config, uint32_t address);
-
-//!@brief Get FlexSPI NOR Configuration Block based on specified option
-status_t flexspi_nor_get_config(uint32_t instance, flexspi_nor_config_t *config, serial_nor_config_option_t *option);
-
-//!@brief Erase Flash Region specified by address and length
-status_t flexspi_nor_flash_erase(uint32_t instance, flexspi_nor_config_t *config, uint32_t start, uint32_t length);
-
-//!@brief Read data from Serial NOR
-status_t flexspi_nor_flash_read(uint32_t instance, flexspi_nor_config_t *config, uint32_t *dst, uint32_t start, uint32_t bytes);
-
-//!@brief Write FlexSPI persistent content
-extern status_t flexspi_nor_write_persistent(const uint32_t data);
-
-//!@brief Read FlexSPI persistent content
-extern status_t flexspi_nor_read_persistent(uint32_t *data);
-
-//!@brief Restore Flash to SPI protocol
-status_t flexspi_nor_restore_spi_protocol(uint32_t instance, flexspi_nor_config_t *config, flash_run_context_t *run_ctx);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // __FLEXSPI_NOR_FLASH_H__

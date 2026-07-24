@@ -1,14 +1,41 @@
-# TinyUF2 for iMXRT
+# TinyUF2 for NXP iMXRT
 
-TinyUF2 port of iMXRT runs entirely on SRAM which is not only super fast but also easy to perform self-update. After powering on, if TinyUF2 already exists on external flash, it will be loaded to internal SRAM and start executing from there.
+TinyUF2 port of iMXRT runs entirely on SRAM which is not only superfast but also easy to perform self-update. After
+powering on, if TinyUF2 already exists on external flash, it will be loaded to internal SRAM and start executing from
+there i.e. flash-stored ram-executed
+
+## Supported Boards
+
+See the board list for this family in [supported_boards.md](../../supported_boards.md#mimxrt10xx).
+
+## Build (CMake preferred)
+
+Use CMake when building this port.
+
+```
+cmake -B build -DBOARD=metro_m7_1011
+cmake --build build
+```
+
+Make is also available:
+
+```
+make BOARD=metro_m7_1011 all
+```
 
 ## Initial Flash
 
-To initially flash TinyUF2 on your blank board or board that is shipped with other bootlaoder. You could either use external debugger or BootROM
+To initially flash TinyUF2 on your blank board or board that is shipped with other bootloader. You could either use external debugger or BootROM
 
 ### External Debugger
 
-jlink or pyocd can be used to program .bin file to appropriate address on external flash which is typically **0x60000000** (RT1062) or **0x60000400** (RT1011). This  can be done with `flash-jlink-bin` or `flash-pyocd-bin` make target.
+jlink or pyocd can be used to program .bin file to appropriate address on external flash which is typically **0x60000000
+** (RT1062), **0x60000400** (RT1011), or **0x30000400** (RT1170). This can be done with `flash-jlink-bin` or
+`flash-pyocd-bin` Make targets, or simply `tinyuf2-jlink` with CMake.
+
+```
+cmake --build build --target tinyuf2-jlink
+```
 
 ```
 make BOARD=metro_m7_1011 flash-jlink-bin
@@ -16,26 +43,68 @@ make BOARD=metro_m7_1011 flash-jlink-bin
 
 ### Serial Download Mode with BootROM
 
-iMXRT has built-in BootROM that implements the Serial Download Protocol (SDP), which can be used to load & execute TinyUF2 to SRAM with `spdhost` tool via USB. You need to
+iMXRT has built-in BootROM that implements the Serial Download Protocol (SDP) or MCU Bootloader Protocol, which can be
+used to load & execute TinyUF2 to SRAM with the `sdphost` or `blhost` tool via USB. You need to
 
-1. Power up your board with the Boot Mode switch set to `BOOT_MODE[1:0]=01` to enter Serial Download mode. Note: Serial Download mode also automatically run with blank flash, therefore you don't have to manual change it in your production run.
-2. Run `flash-sdp` make target which in turn uses the `sdphost` with correct address and arguments to load and execute TinyUF2. While running, TinyUF2 will program the external flash with its SRAM's image.
+1. Install the NXP SPSDK with `pip install spsdk` more details is described in the [SPSDK Installation Guide](https://spsdk.readthedocs.io/en/latest/usage/installation.html).If you are running Linux, make sure your user has permission for accessing `hidraw` (more details below)
+
+2. Power up your board with the Boot Mode switch set to `BOOT_MODE[1:0]=01` to enter Serial Download mode. Note: Serial Download mode also automatically run with blank flash, therefore you don't have to manual change it in your production run.
+
+| Mode  | BOOT[1] | BOOT[0] | Description                                 |
+|-------|---------|---------|---------------------------------------------|
+| SDP   | OFF     | ON      | Serial Download Mode (for initial flashing) |
+| Flash | ON      | OFF     | Boot from FlexSPI NOR (normal operation)    |
+
+3. Run `flash-sdp` make target which in turn uses the `sdphost` (RT10xx) or `blhost` (RT1170/RT1176) with correct
+   address and arguments to load and
+   execute TinyUF2 in SRAM. While running, TinyUF2 will program the external flash with its SRAM's image.
 
   ```
-  make BOARD=imxrt1010_evk flash-sdp
+  cmake --build build --target flash-sdp
   ```
 
-Note: `sdphost` executable binaries for common platforms (windows/mac/linux/arm32) are included in sdphost folder. If you have issue with executable permission, just manually give it permission to run. Should binaries for your host platform is not included (e.g ARM, RISC-V etc ...), you could build it from source using [apexrtos/nxp_blhost_sdphost](https://github.com/apexrtos/nxp_blhost_sdphost).
+  ```
+  make BOARD=metro_m7_1011 flash-sdp
+  ```
 
-Note2: Since SDP with BootROM doesn't requires external debugger and always exists regardless of the external flash, this method can also be used to de-brick your board should it be needed.
+In case you wonder, the flash-sdp target will execute the following commands. Note: each RT10xx MCU has different
+VID/PID and different SRAM address. Example below is for RT1011 (sdphost):
 
-## Update to newer version
+  ```
+  sdphost -u 0x1fc9,0x0145 write-file 0x20206400 _build/metro_m7_1011/tinyuf2-metro_m7_1011.bin
+  sdphost -u 0x1fc9,0x0145 jump-address 0x20207000
+  ```
 
-Double tap to enter bootloader mode, then simply drag & drop `update-tinyuf2_BOARD.uf2` into BOOT drive to update. The update file can be generated by running make with `self-update` target or simply download it from [release page](https://github.com/adafruit/tinyuf2/releases).
+For RT1170/RT1176, BootROM SDP uses `blhost` with `load-image` (example for RT1170):
 
-## Supported Boards
+  ```
+  blhost -u 0x1fc9,0x013d load-image _build/imxrt1170_evk/tinyuf2-imxrt1170_evk_ivt0.bin
+  ```
 
-- [Adafruit Metro M7 1011](https://www.adafruit.com/product/4950)
-- [MIMX RT1010 Evaluation Kit](https://www.nxp.com/design/development-boards/i.mx-evaluation-and-development-boards/i.mx-rt1010-evaluation-kit:MIMXRT1010-EVK)
-- [MIMX RT1020 Evaluation Kit](https://www.nxp.com/design/development-boards/i.mx-evaluation-and-development-boards/i.mx-rt1020-evaluation-kit:MIMXRT1020-EVK)
-- [MIMX RT1060 Evaluation Kit](https://www.nxp.com/design/development-boards/i.mx-evaluation-and-development-boards/mimxrt1060-evk-i.mx-rt1060-evaluation-kit:MIMXRT1060-EVK)
+4. Switch back `BOOT_MODE[1:0]=10` to boot from external flash
+
+Note: Since SDP with BootROM doesn't require external debugger and always exists regardless of the external flash, this
+method can also be used to de-brick your board should it be needed.
+
+## Update TinyUF2 to newer version
+
+Double tap to enter bootloader mode, then simply drag & drop `update-tinyuf2_BOARD.uf2` into BOOT drive to update. The
+update file can be generated by running the `self-update` target (Make or CMake) or simply download it
+from [release page](https://github.com/adafruit/tinyuf2/releases).
+
+## Linux hidraw access
+
+Linux requires setting permissions for accessing hidraw devices.  This is done by adding udev rules.  Follow these instructions to add permission.
+
+1. Create file named `50-nxp.rules` with these contents:
+  ```
+  KERNEL=="hidraw*", ATTRS{idVendor}=="1fc9", MODE="0666"
+  ```
+
+2. Copy `50-nxp.rules` to `/etc/udev/rules.d/50-nxp.rules`
+
+3. Reload the rules:
+  ```
+  sudo udevadm control --reload-rules
+  sudo udevadm trigger
+  ```

@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2020 Ha Thach (tinyusb.org) for Adafruit Industries
@@ -35,28 +35,33 @@
 
 #include "fsl_device_registers.h"
 #include "board.h"
+#include "fsl_flexspi_nor_boot.h"
 
-// _ivt_origin is defined in linker script
-// The FCFB has different offsets, but the IVT is consistent within the family
-extern uint32_t _ivt_origin[];
-#define BOARD_BOOT_START        (((uint32_t) _ivt_origin) - 0x1000)
+ // symbols defined by linker
+ extern uint32_t _fcfb_origin[];
+ extern uint32_t _fcfb_length[];
+ extern uint32_t _ivt_origin[];
+ extern uint32_t _ivt_length[];
+ extern uint32_t _interrupts_origin[];
+ extern uint32_t _interrupts_length[];
+ extern uint32_t _board_boot_length[];
 
-#define BOARD_BOOT_LENGTH       (0x8800)
-
-// Flash Start Address of Application, typically 0x6000C000
-#define BOARD_FLASH_APP_START   (FlexSPI_AMBA_BASE + 0xC000)
+// Flash Start Address of Application
+#ifndef BOARD_FLASH_APP_START
+#define BOARD_FLASH_APP_START (FLASH_BASE + 0xC000)
+#endif
 
 // Double Reset tap to enter DFU
-#define TINYUF2_DFU_DOUBLE_TAP  1
-#define DBL_TAP_REG              SNVS->LPGPR[3]
+#define TINYUF2_DBL_TAP_DFU     1
+#define TINYUF2_DBL_TAP_REG     SNVS->LPGPR[3]
 
 // Brightness percentage from 1 to 255
 #ifndef NEOPIXEL_BRIGHTNESS
-#define NEOPIXEL_BRIGHTNESS   0x10
+#define NEOPIXEL_BRIGHTNESS     0x10
 #endif
 
 #ifdef LED_PIN
-#define TINYUF2_LED           1
+#define TINYUF2_LED             1
 #endif
 
 #ifdef __cplusplus

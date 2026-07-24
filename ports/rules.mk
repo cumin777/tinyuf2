@@ -2,12 +2,6 @@
 # Common make rules for all
 # ---------------------------------------
 
-PYTHON3 ?= python3
-MKDIR = mkdir
-SED = sed
-CP = cp
-RM = rm
-
 CFLAGS  += $(addprefix -I,$(INC))
 LDFLAGS += $(CFLAGS)
 ASFLAGS += $(CFLAGS)
@@ -41,25 +35,52 @@ $(OBJ_DIRS):
 
 $(BUILD)/$(OUTNAME).elf: $(OBJ)
 	@echo LINK $@
-	@$(CC) -o $@ $(LDFLAGS) $(addprefix $(LD_SCRIPT_FLAG), $(LD_FILES)) $^ -Wl,--start-group $(LIBS) -Wl,--end-group
+	@$(CC) -o $@ $(LDFLAGS) $(addprefix $(LD_SCRIPT_FLAG), $(LD_FILES)) $^ -Wl,--print-memory-usage -Wl,--start-group $(LIBS) -Wl,--end-group
 
 $(BUILD)/$(OUTNAME).bin: $(BUILD)/$(OUTNAME).elf
 	@echo CREATE $@
 	@$(OBJCOPY) -O binary $^ $@
 
+# skip hex rule if building bootloader for imxrt since it needs spceial rule
+ifneq ($(PORT)$(BUILD_APPLICATION),mimxrt10xx)
+
 $(BUILD)/$(OUTNAME).hex: $(BUILD)/$(OUTNAME).elf
 	@echo CREATE $@
 	@$(OBJCOPY) -O ihex $^ $@
+
+endif
 
 size: $(BUILD)/$(OUTNAME).elf
 	-@echo ''
 	@$(SIZE) $<
 	-@echo ''
 
+# linkermap must be install previously at https://github.com/hathach/linkermap
+linkermap: $(BUILD)/$(OUTNAME).elf
+	@linkermap -v $<.map
+
 .PHONY: clean
 clean:
 	$(RM) -rf $(BUILD)
 	$(RM) -rf $(BIN)
+
+# get dependencies
+.PHONY: get-deps
+get-deps:
+	$(PYTHON3) $(TOP)/tools/get_deps.py --board $(BOARD)
+
+#-------------- Artifacts --------------
+SELF_UF2 ?= apps/self_update/$(BUILD)/update-$(OUTNAME).uf2
+
+$(BIN):
+	@$(MKDIR) -p $@
+	@$(MKDIR) -p $@/apps
+
+copy-artifact: $(BIN)
+copy-artifact: $(BUILD)/$(OUTNAME).bin $(BUILD)/$(OUTNAME).hex
+	@$(CP) $(BUILD)/$(OUTNAME).bin $(BIN)
+	@$(CP) $(BUILD)/$(OUTNAME).hex $(BIN)
+	@if [ -f "$(SELF_UF2)" ]; then $(CP) $(SELF_UF2) $(BIN)/apps; fi
 
 #-------------- Compile Rules --------------
 
@@ -146,6 +167,13 @@ flash-stlink: $(BUILD)/$(OUTNAME).elf
 erase-stlink:
 	STM32_Programmer_CLI --connect port=swd --erase all
 
+# st-flash must be in PATH
+flash-stflash: $(BUILD)/$(OUTNAME).bin
+	st-flash --reset --format binary write $< 0x8000000
+
+erase-stflash:
+	st-flash erase
+
 #-------------------- Flash with pyocd --------------------
 
 # Flash hex file using pyocd
@@ -160,3 +188,28 @@ flash-pyocd-bin: $(BUILD)/$(OUTNAME).bin
 
 erase-pyocd:
 	pyocd erase -t $(PYOCD_TARGET) -c
+
+#-------------------- Flash with dfu-util -----------------
+
+# flash using ROM bootloader
+flash-dfu-util: $(BUILD)/$(OUTNAME).bin
+	dfu-util -R -a 0 --dfuse-address 0x08000000 -D $<
+
+erase-dfu-util:
+	dfu-util -R -a 0 --dfuse-address 0x08000000:mass-erase:force
+
+# --------------- openocd-wch -----------------
+# wch-linke is not supported yet in official openOCD yet. We need to either use
+# 1. download openocd as part of mounriver studio http://www.mounriver.com/download or
+# 2. compiled from https://github.com/hathach/riscv-openocd-wch or
+#    https://github.com/dragonlock2/miscboards/blob/main/wch/SDK/riscv-openocd.tar.xz
+#    with  ./configure --disable-werror --enable-wlinke --enable-ch347=no
+OPENOCD_WCH ?= /home/${USER}/app/riscv-openocd-wch/src/openocd
+OPENOCD_WCH_OPTION ?=
+flash-openocd-wch: $(BUILD)/$(OUTNAME).elf
+	$(OPENOCD_WCH) $(OPENOCD_WCH_OPTION) -c init -c halt -c "flash write_image $<" -c reset -c exit
+
+#-------------------- Flash with uf2 -----------------
+UF2CONV_PY = $(TOP)/lib/uf2/utils/uf2conv.py
+flash-uf2: $(BUILD)/$(OUTNAME).uf2
+	python ${UF2CONV_PY} -f ${UF2_FAMILY_ID} --deploy $^

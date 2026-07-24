@@ -24,18 +24,31 @@
 
 #include "board_api.h"
 #include "stm32f3xx_hal.h"
+
+#ifndef BUILD_NO_TINYUSB
 #include "tusb.h"
+#endif
 
 //--------------------------------------------------------------------+
 // MACRO TYPEDEF CONSTANT ENUM DECLARATION
 //--------------------------------------------------------------------+
 
-#define STM32_UUID ((uint32_t *)0x1FFFF7AC)
+#define STM32_UUID    ((volatile uint32_t *) UID_BASE)
 
 static UART_HandleTypeDef UartHandle;
 
+static bool reset_by_option_bytes = false;
+
+bool board_reset_by_option_bytes(void)
+{
+  return reset_by_option_bytes;
+}
+
 void board_init(void)
 {
+  // Check asap to ensure correct reason
+  reset_by_option_bytes = !!(__HAL_RCC_GET_FLAG(RCC_FLAG_OBLRST));
+
   clock_init();
   SystemCoreClockUpdate();
 
@@ -129,14 +142,16 @@ bool board_app_valid(void)
   if((((*(uint32_t*)BOARD_FLASH_APP_START) - BOARD_RAM_START) <= BOARD_RAM_SIZE)) // && ((*(uint32_t*)BOARD_FLASH_APP_START + 4) > BOARD_FLASH_APP_START) && ((*(uint32_t*)BOARD_FLASH_APP_START + 4) < BOARD_FLASH_APP_START + BOARD_FLASH_SIZE)
   {
     return true;
-  } else
-  {
-    return false;
   }
+  return false;
 }
 
 void board_app_jump(void)
 {
+  volatile uint32_t const * app_vector = (volatile uint32_t const*) BOARD_FLASH_APP_START;
+  uint32_t sp = app_vector[0];
+  uint32_t app_entry = app_vector[1];
+
   GPIO_InitTypeDef  GPIO_InitStruct;
   GPIO_InitStruct.Pin = GPIO_PIN_12;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -160,6 +175,7 @@ void board_app_jump(void)
   #if defined(UART_DEV) && CFG_TUSB_DEBUG
   HAL_UART_DeInit(&UartHandle);
   HAL_GPIO_DeInit(UART_GPIO_PORT, UART_TX_PIN | UART_RX_PIN);
+  UART_CLOCK_DISABLE();
   #endif
 
   HAL_GPIO_DeInit(GPIOA, GPIO_PIN_12 | GPIO_PIN_11);
@@ -173,24 +189,35 @@ void board_app_jump(void)
   HAL_RCC_DeInit();
   HAL_DeInit();
 
-  // TODO protect bootloader region
+  SysTick->CTRL = 0;
+  SysTick->LOAD = 0;
+  SysTick->VAL = 0;
 
-  volatile uint32_t const * app_vector = (volatile uint32_t const*) BOARD_FLASH_APP_START;
+  // Disable all Interrupts
+  NVIC->ICER[0] = 0xFFFFFFFF;
+  NVIC->ICER[1] = 0xFFFFFFFF;
+  NVIC->ICER[2] = 0xFFFFFFFF;
+  NVIC->ICER[3] = 0xFFFFFFFF;
 
   /* switch exception handlers to the application */
   SCB->VTOR = (uint32_t) BOARD_FLASH_APP_START;
 
   // Set stack pointer
-  __set_MSP(app_vector[0]);
+  __set_MSP(sp);
 
   // Jump to Application Entry
-  asm("bx %0" ::"r"(app_vector[1]));
+  asm("bx %0" ::"r"(app_entry));
 }
 
 uint8_t board_usb_get_serial(uint8_t serial_id[16])
 {
   uint8_t const len = 12;
-  memcpy(serial_id, STM32_UUID, len);
+  uint32_t* serial_id32 = (uint32_t*) (uintptr_t) serial_id;
+
+  serial_id32[0] = STM32_UUID[0];
+  serial_id32[1] = STM32_UUID[1];
+  serial_id32[2] = STM32_UUID[2];
+
   return len;
 }
 
@@ -234,7 +261,7 @@ void board_rgb_write(uint8_t const rgb[])
 
   __disable_irq();
 
-  // Enable DWT in debug core. Useable when interrupts disabled, as opposed to Systick->VAL
+  // Enable DWT in debug core. Usable when interrupts disabled, as opposed to Systick->VAL
   CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
   DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
   DWT->CYCCNT = 0;
@@ -299,26 +326,22 @@ int board_uart_write(void const * buf, int len)
 #endif
 }
 
-#ifndef TINYUF2_SELF_UPDATE
-
+#ifndef BUILD_NO_TINYUSB
 // Forward USB interrupt events to TinyUSB IRQ Handler
-void USB_HP_IRQHandler(void)
-{
+void USB_HP_IRQHandler(void) {
   tud_int_handler(0);
 }
 
 // USB low-priority interrupt (Channel 75): Triggered by all USB events
 // (Correct transfer, USB reset, etc.). The firmware has to check the
 // interrupt source before serving the interrupt.
-void USB_LP_IRQHandler(void)
-{
+void USB_LP_IRQHandler(void) {
   tud_int_handler(0);
 }
 
 // USB wakeup interrupt (Channel 76): Triggered by the wakeup event from the USB
 // Suspend mode.
-void USBWakeUp_RMP_IRQHandler(void)
-{
+void USBWakeUp_RMP_IRQHandler(void) {
   tud_int_handler(0);
 }
 
@@ -326,7 +349,5 @@ void USBWakeUp_RMP_IRQHandler(void)
 
 // Required by __libc_init_array in startup code if we are compiling using
 // -nostdlib/-nostartfiles.
-void _init(void)
-{
-
+__attribute__((used)) void _init(void) {
 }

@@ -1,140 +1,101 @@
-UF2_FAMILY_ID = 0x4fb2d5bd
-CROSS_COMPILE = arm-none-eabi-
-
 # List of git submodules that is included as part of the UF2 version
-GIT_SUBMODULES = nxp/mcux-sdk tinyusb
+GIT_SUBMODULES = tinyusb
 
-# For flash-pyocd-bin target
-FLASH_BIN_ADDR = $(UF2_$(MCU)_WRITE_ADDR)
+# For flash-jlink/pyocd/openocd-bin target
+FLASH_BIN_ADDR = $(UF2_$(MCU)_ADDR)
 
 include ../make.mk
-
-# TODO include port.mk
-
-SDK_DIR = lib/nxp/mcux-sdk
-MCU_DIR = $(SDK_DIR)/devices/$(MCU)
+include port.mk
 
 LD_FILES ?= \
   $(PORT_DIR)/linker/$(MCU)_ram.ld \
-  $(PORT_DIR)/linker/memory.ld \
+  $(PORT_DIR)/linker/boot.ld \
   $(PORT_DIR)/linker/common.ld
 
-# Port Compiler Flags
-CFLAGS += \
-  -mthumb \
-  -mabi=aapcs \
-  -mcpu=cortex-m7 \
-  -mfloat-abi=hard \
-  -mfpu=fpv5-d16 \
-  -D__ARMVFP__=0 -D__ARMFPV5__=0 \
-  -DXIP_EXTERNAL_FLASH=1 \
-  -DXIP_BOOT_HEADER_ENABLE=1 \
-  -DCFG_TUSB_MCU=OPT_MCU_MIMXRT10XX
-
-# mcu driver cause following warnings
-CFLAGS += -Wno-error=unused-parameter
-
-# Port source
-PORT_SRC_C = \
-	$(addprefix $(CURRENT_PATH)/, $(wildcard *.c)) \
-	$(MCU_DIR)/system_$(MCU).c \
-	$(MCU_DIR)/project_template/clock_config.c \
-	$(MCU_DIR)/drivers/fsl_clock.c \
-	$(SDK_DIR)/drivers/cache/armv7-m7/fsl_cache.c \
-	$(SDK_DIR)/drivers/common/fsl_common.c \
-	$(SDK_DIR)/drivers/igpio/fsl_gpio.c \
-	$(SDK_DIR)/drivers/lpuart/fsl_lpuart.c \
-	$(SDK_DIR)/drivers/ocotp/fsl_ocotp.c \
-	$(SDK_DIR)/drivers/pwm/fsl_pwm.c \
-	$(SDK_DIR)/drivers/xbara/fsl_xbara.c \
-
 SRC_C += \
-	$(PORT_SRC_C) \
-	lib/tinyusb/src/portable/nxp/transdimension/dcd_transdimension.c
+	$(PORT_DIR)/boards.c \
+	$(PORT_DIR)/board_flash.c \
+	$(PORT_DIR)/romapi_flash.c \
 
-SRC_S += $(MCU_DIR)/gcc/startup_$(MCU).S
-
-# Port include
-INC += \
-	$(TOP)/$(SDK_DIR)/CMSIS/Include \
-	$(TOP)/$(MCU_DIR) \
-	$(TOP)/$(MCU_DIR)/project_template\
-	$(TOP)/$(MCU_DIR)/xip \
-	$(TOP)/$(MCU_DIR)/drivers \
-	$(TOP)/$(SDK_DIR)/drivers/cache/armv7-m7 \
-	$(TOP)/$(SDK_DIR)/drivers/common \
-	$(TOP)/$(SDK_DIR)/drivers/igpio \
-	$(TOP)/$(SDK_DIR)/drivers/lpuart \
-	$(TOP)/$(SDK_DIR)/drivers/ocotp \
-	$(TOP)/$(SDK_DIR)/drivers/pwm \
-	$(TOP)/$(SDK_DIR)/drivers/rtwdog \
-	$(TOP)/$(SDK_DIR)/drivers/xbara \
-	$(TOP)/$(SDK_DIR)/drivers/wdog01 \
+# iMXRT self-update file is in the same BUILD folder
+SELF_UF2 = $(BUILD)/update-$(OUTNAME).uf2
 
 include ../rules.mk
 
 #---------------------------------------------------------
-# Load to SRAM using sdphost
-# Note: you may need to give the sdphost binary executable permission first.
+# Load to SRAM using sdphost/blhost
+# sdphost/blhost loads the image into the RAM locations specified in the .ld files.
+#
+# sdphost (rt10xx)
+#  - "SDP Write Address" must equal _fcfb_origin
+#  - "SDP Jump Address" must equal _ivt_origin
+#
+# blhost (rt117x)
+#  - "Load Address" must equal _fcfb_origin
+#
+# TinyUF2 will copy itself to the correct location in flash. "FLASH_FCFB_ADDR" shows where the image will reside in
+# flash if you want to use a tool like pyocd to write the binary into flash through SWD
+# Note: The .elf file cannot be written directly to flash since the target is RAM and the addresses need to be
+# translated.
 #---------------------------------------------------------
+
+# SDPHOST/BLHOST are variables if you need to change the path
+SDPHOST ?= sdphost
+BLHOST ?= blhost
+
 SDP_MIMXRT1011_PID = 0x0145
-SDP_MIMXRT1011_WRITE_ADDR = 0x20206400
-SDP_MIMXRT1011_JUMP_ADDR  = 0x20207000
-UF2_MIMXRT1011_WRITE_ADDR = 0x60000400
-
-# RT1015, 1050 pid is also 0x0130
+SDP_MIMXRT1015_PID = 0x0130
 SDP_MIMXRT1021_PID = 0x0130
-SDP_MIMXRT1021_WRITE_ADDR = 0x0400
-SDP_MIMXRT1021_JUMP_ADDR  = 0x1000
-UF2_MIMXRT1021_WRITE_ADDR = 0x60000400
-
+SDP_MIMXRT1024_PID = 0x0130
+SDP_MIMXRT1042_PID = 0x0135
+SDP_MIMXRT1052_PID = 0x0130
 SDP_MIMXRT1062_PID = 0x0135
-SDP_MIMXRT1062_WRITE_ADDR = 0x20208000
-SDP_MIMXRT1062_JUMP_ADDR  = 0x20209000
-UF2_MIMXRT1062_WRITE_ADDR = 0x60000000
+SDP_MIMXRT1064_PID = 0x0135
+SDP_MIMXRT1176_PID = 0x013d
 
-DBL_TAP_MAGIC_ERASE_APP = 0xf5e80ab4
-DBL_TAP_REG_ADDR = 0x400D410C
+SDP_PID = $(SDP_$(MCU)_PID)
 
-ifeq ($(OS),Windows_NT)
-	SDPHOST = sdphost/win/sdphost.exe
+# extract _fcfb_origin and _flash_base from linker file
+FCFB_ORIGIN := $(shell sed -n 's/_fcfb_origin.*\(0x.*\);/\1/p' $(TOP)/$(PORT_DIR)/linker/$(MCU)_ram.ld)
+IVT_ORIGIN := $(shell printf "0x%X\n" $$(( ($(FCFB_ORIGIN) & ~0xFFF) + 0x1000 )))
+FLASH_BASE := $(shell sed -n 's/_flash_base.*\(0x.*\);/\1/p' $(TOP)/$(PORT_DIR)/linker/$(MCU)_ram.ld)
+FLASH_FCFB_ADDR := $(shell printf "0x%X\n" $$(( $(FLASH_BASE) + ($(FCFB_ORIGIN) & 0xFFF) )))
+$(info FCFB_ORIGIN=$(FCFB_ORIGIN) IVT_ORIGIN=$(IVT_ORIGIN) FLASH_FCFB_ADDR=$(FLASH_FCFB_ADDR))
+
+$(BUILD)/$(OUTNAME).hex: $(BUILD)/$(OUTNAME).bin
+	@echo CREATE $@
+	@$(OBJCOPY) -Ibinary -Oihex --change-addresses ${FLASH_FCFB_ADDR} $^ $@
+
+
+# RT117x uses blhost (MCU bootloader protocol)
+ifeq ($(MCU),MIMXRT1176)
+$(BUILD)/$(OUTNAME)_ivt0.bin: $(BUILD)/$(OUTNAME).bin
+	$(PYTHON3) tools/make_ivt0_image.py $< $@
+
+flash-sdp: $(BUILD)/$(OUTNAME)_ivt0.bin
+	@if [ -z "$(BLHOST)" ]; then echo SDPHOST is not found for this machine; exit 1; fi
+	$(BLHOST) -u 0x1fc9,$(SDP_PID) load-image $<
+
 else
-	UNAME_S := $(shell uname -s)
-	UNAME_M := $(shell uname -m)
-
-	ifeq ($(UNAME_S),Darwin)
-		SDPHOST = sdphost/mac/sdphost
-	endif
-
-	ifeq ($(UNAME_S),Linux)
-		SDPHOST_x86_64 = amd64
-		SDPHOST_i386 = i386
-		SDPHOST_armv7l = arm32
-
-		SDPHOST = sdphost/linux/$(SDPHOST_$(UNAME_M))/sdphost
-	endif
-endif
-
+# RT10xx use sdphost (Serial Download Protocol)
 flash-sdp: $(BUILD)/$(OUTNAME).bin
 	@if [ -z "$(SDPHOST)" ]; then echo SDPHOST is not found for this machine; exit 1; fi
-	$(SDPHOST) -u 0x1fc9,$(SDP_$(MCU)_PID) -- write-file $(SDP_$(MCU)_WRITE_ADDR) $<
-	$(SDPHOST) -u 0x1fc9,$(SDP_$(MCU)_PID) -- jump-address $(SDP_$(MCU)_JUMP_ADDR)
+	$(SDPHOST) -u 0x1fc9,$(SDP_PID) write-file $(FCFB_ORIGIN) $<
+	$(SDPHOST) -u 0x1fc9,$(SDP_PID) jump-address $(IVT_ORIGIN)
+endif
 
-# TODO write-register doesn't work
-erase-app: $(BUILD)/$(OUTNAME).bin
-	@if [ -z "$(SDPHOST)" ]; then echo SDPHOST is not found for this machine; exit 1; fi
-	$(SDPHOST) -u 0x1fc9,$(SDP_$(MCU)_PID) -- write-register $(DBL_TAP_REG_ADDR) 32 $(DBL_TAP_MAGIC_ERASE_APP)
-	$(SDPHOST) -u 0x1fc9,$(SDP_$(MCU)_PID) -- write-file $(SDP_$(MCU)_WRITE_ADDR) $<
-	$(SDPHOST) -u 0x1fc9,$(SDP_$(MCU)_PID) -- jump-address $(SDP_$(MCU)_JUMP_ADDR)
-
-#-------------- Self-update  --------------
-# RT10xx run entire bootloader from SRAM and
-# can directly flash the bootloader region
-# without using self-update app as other port
-#--------------------------------------------
-include ../self_update.mk
+#-------------------------- Self-update  --------------------------
+# RT10xx run entire bootloader from SRAM and can directly flash
+# the bootloader region without using self-update app as other port
+#--------------------------------------------------------------------
+self-update: $(SELF_UF2)
 
 # self-update uf2 file
-$(SELF_BUILD_OBJ)/$(SELF_OUTNAME).uf2: $(BUILD)/$(OUTNAME).bin $(SELF_OBJ_DIRS)
+$(SELF_UF2): $(BUILD)/$(OUTNAME).bin
 	@echo CREATE $@
-	$(PYTHON3) $(TOP)/lib/uf2/utils/uf2conv.py -f $(UF2_FAMILY_ID) -b $(UF2_$(MCU)_WRITE_ADDR) -c -o $@ $<
+	$(UF2CONV_PY) -f $(UF2_FAMILY_ID) -b ${FLASH_FCFB_ADDR} -c -o $@ $<
+
+# flash by copying uf2
+flash-uf2: $(SELF_UF2)
+	@echo copying $<
+	$(UF2CONV_PY) -f $(UF2_FAMILY_ID) --deploy $<
