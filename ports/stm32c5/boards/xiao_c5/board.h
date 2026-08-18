@@ -33,8 +33,9 @@
 //--------------------------------------------------------------------+
 // USB UF2
 //--------------------------------------------------------------------+
-// TODO: Apply for official VID/PID
-#define USB_VID           0x239A
+// Seeed XIAO STM32C5 bootloader identity. Keep this distinct from the
+// application USB CDC identity (0x2886:0x80C5).
+#define USB_VID           0x2886
 #define USB_PID           0x00C5
 #define USB_MANUFACTURER  "Seeed"
 #define USB_PRODUCT       "XIAO C5"
