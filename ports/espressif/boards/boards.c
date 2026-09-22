@@ -29,10 +29,17 @@
 #include "hal/gpio_ll.h"
 
 #include "esp_private/usb_phy.h"
+#if CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3
+// esp32s31 OTG uses dedicated USB_DP/USB_DM pins, no GPIO-based PHY pins
 #include "soc/usb_pins.h"
+#endif
 
 #include "soc/usb_periph.h"
 #include "esp_private/periph_ctrl.h"
+#if CONFIG_IDF_TARGET_ESP32S31
+// LP system controller provides the download-boot request register on esp32s31
+#include "soc/lp_system_reg.h"
+#endif
 
 #include "esp_partition.h"
 #include "esp_ota_ops.h"
@@ -430,9 +437,13 @@ static void IRAM_ATTR usb_persist_shutdown_handler(void) {
 #if CONFIG_IDF_TARGET_ESP32S2
   periph_module_reset(PERIPH_USB_MODULE);
   periph_module_enable(PERIPH_USB_MODULE);
-#endif
-
   REG_WRITE(RTC_CNTL_OPTION1_REG, RTC_CNTL_FORCE_DOWNLOAD_BOOT);
+#elif CONFIG_IDF_TARGET_ESP32S31
+  // esp32s31: download-boot request register moved into LP system controller
+  REG_WRITE(LP_SYSTEM_REG_SYS_CTRL_REG, LP_SYSTEM_REG_FORCE_DOWNLOAD_BOOT);
+#else
+  REG_WRITE(RTC_CNTL_OPTION1_REG, RTC_CNTL_FORCE_DOWNLOAD_BOOT);
+#endif
 }
 
 // Invoked when cdc when line state changed e.g connected/disconnected

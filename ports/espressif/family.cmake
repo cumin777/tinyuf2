@@ -3,6 +3,9 @@ include(${CMAKE_CURRENT_LIST_DIR}/boards/${BOARD}/board.cmake)
 set(UF2_FAMILY_ID_esp32s2 0xbfdd4eee)
 set(UF2_FAMILY_ID_esp32s3 0xc47e5767)
 set(UF2_FAMILY_ID_esp32p4 0x3d308e94)
+# TODO: esp32s31 family ID is not yet registered in microsoft/uf2 uf2families.json,
+# temporarily use ESP32S3 ID (same data format) until an official ID is assigned.
+set(UF2_FAMILY_ID_esp32s31 0xc47e5767)
 set(UF2_FAMILY_ID ${UF2_FAMILY_ID_${IDF_TARGET}})
 
 # override default family_gen_uf2

@@ -39,6 +39,10 @@
   #define BOARD_UF2_FAMILY_ID     0xc47e5767
 #elif CONFIG_IDF_TARGET_ESP32P4
   #define BOARD_UF2_FAMILY_ID     0x3d308e94
+#elif CONFIG_IDF_TARGET_ESP32S31
+  // TODO: use ESP32S3 ID temporarily until esp32s31 ID is registered in
+  // microsoft/uf2 uf2families.json
+  #define BOARD_UF2_FAMILY_ID     0xc47e5767
 #else
   #error unsupported MCUs
 #endif

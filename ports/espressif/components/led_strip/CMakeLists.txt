@@ -17,6 +17,13 @@ if("${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}" VERSION_GREATER_EQUAL "5.1")
     endif()
 endif()
 
+# IDF v6.x split the legacy 'driver' component into per-peripheral esp_driver_* components
+if("${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}" VERSION_GREATER_EQUAL "6.0")
+    set(requires_components esp_driver_rmt esp_driver_spi heap)
+else()
+    set(requires_components driver)
+endif()
+
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS "include" "interface"
-                       REQUIRES "driver")
+                       REQUIRES ${requires_components})

@@ -13,8 +13,19 @@ else()
     set(target_folder "${target}")
 endif()
 
-# Use the linker script files from the actual bootloader
-set(scripts "${IDF_PATH}/components/bootloader/subproject/main/ld/${target_folder}/bootloader.ld"
-            "${IDF_PATH}/components/bootloader/subproject/main/ld/${target_folder}/bootloader.rom.ld")
+include($ENV{IDF_PATH}/tools/cmake/version.cmake)
 
-target_linker_script(${COMPONENT_LIB} INTERFACE "${scripts}")
+if(IDF_BUILD_V2)
+    # Build system v2 exposes the preprocessed bootloader linker scripts as a
+    # build property
+    idf_build_get_property(scripts BOOTLOADER_LINKER_SCRIPT)
+    target_linker_script(${COMPONENT_LIB} INTERFACE "${scripts}")
+elseif("${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}" VERSION_GREATER_EQUAL "6.0")
+    # IDF v6.x (v1 build) attaches the default linker scripts to __idf_main
+    # itself right after project(bootloader), nothing to do here.
+else()
+    # Legacy IDF v5.x ships per-target bootloader.ld/bootloader.rom.ld
+    set(scripts "${IDF_PATH}/components/bootloader/subproject/main/ld/${target_folder}/bootloader.ld"
+                "${IDF_PATH}/components/bootloader/subproject/main/ld/${target_folder}/bootloader.rom.ld")
+    target_linker_script(${COMPONENT_LIB} INTERFACE "${scripts}")
+endif()

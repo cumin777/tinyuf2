@@ -12,11 +12,18 @@ set(SDKCONFIG ${CMAKE_BINARY_DIR}/sdkconfig)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 idf_build_set_property(EXTRA_CMAKE_ARGS -DBOARD=${BOARD}) # Pass BOARD to bootloader
 
+# GCC 15 warns (and IDF promotes to error) on exact-fit string initializers
+# without NUL, e.g. char volume_label[11] = "S31FCB1BOOT". This idiom is
+# intentional for FAT volume labels and UF2 board names.
+idf_build_set_property(COMPILE_OPTIONS "-Wno-error=unterminated-string-initialization" APPEND)
+
 execute_process(COMMAND git describe --dirty --always --tags
+                WORKING_DIRECTORY ${TOP}
                 OUTPUT_VARIABLE GIT_VERSION)
 string(STRIP ${GIT_VERSION} GIT_VERSION)
 
-execute_process(COMMAND bash "-c" "git submodule status ${TOP}/lib/tinyusb | cut -d\" \" -f3,4 | paste -s -d\" \" -"
+execute_process(COMMAND bash "-c" "git submodule status lib/tinyusb | cut -d\" \" -f3,4 | paste -s -d\" \" -"
+                WORKING_DIRECTORY ${TOP}
                 OUTPUT_VARIABLE GIT_SUBMODULE_VERSIONS)
 
 string(REPLACE ../ "" GIT_SUBMODULE_VERSIONS ${GIT_SUBMODULE_VERSIONS})
@@ -31,28 +38,43 @@ cmake_print_variables(GIT_VERSION GIT_SUBMODULE_VERSIONS)
 
 project(tinyuf2)
 
-# Create post-build script for combined.bin / combined-ota.bin
-file(WRITE ${CMAKE_BINARY_DIR}/tinyuf2.postbuild.sh
-  "#!/bin/bash\n"
-  "echo \"Creating combined.bin\"\n"
-  "esptool.py --chip ${IDF_TARGET} merge_bin --output combined.bin $(tr '\\n' ' ' < ${CMAKE_BINARY_DIR}/flash_args)\n"
-)
-
-# check if board is 4MB flash and create combined-ota.bin
+# Create post-build script for combined-ota.bin (4MB no-ota boards, run under bash)
 file(READ ${CMAKE_CURRENT_LIST_DIR}/boards/${BOARD}/sdkconfig BOARD_SDKCONFIG_CONTENTS)
 string(FIND ${BOARD_SDKCONFIG_CONTENTS} "partitions-4MB-noota.csv" MATCH_INDEX)
 if(NOT MATCH_INDEX EQUAL -1)
-  file(APPEND ${CMAKE_BINARY_DIR}/tinyuf2.postbuild.sh
-    "echo \"Creating combined-ota.bin\"\n"
-    "gen_esp32part.py ${CMAKE_CURRENT_LIST_DIR}/partitions-4MB.csv ${CMAKE_BINARY_DIR}/partition_table/partitions-table-ota.bin\n"
+  file(WRITE ${CMAKE_BINARY_DIR}/tinyuf2.postbuild.sh
     "esptool.py --chip ${IDF_TARGET} merge_bin --output combined-ota.bin $(tr '\\n' ' ' < ${CMAKE_BINARY_DIR}/flash_args | sed 's/partition-table.bin/partitions-table-ota.bin/g')\n"
     "cp ${CMAKE_BINARY_DIR}/partition_table/partitions-table-ota.bin ${ARTIFACT_PATH}/partitions-table-ota.bin\n"
     "cp combined-ota.bin ${ARTIFACT_PATH}/combined-ota.bin\n"
     )
+  add_custom_command(TARGET app POST_BUILD
+    COMMAND ${Python_EXECUTABLE} $ENV{IDF_PATH}/components/partition_table/gen_esp32part.py
+            ${CMAKE_CURRENT_LIST_DIR}/partitions-4MB.csv
+            ${CMAKE_BINARY_DIR}/partition_table/partitions-table-ota.bin
+    COMMAND bash ${CMAKE_BINARY_DIR}/tinyuf2.postbuild.sh
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    VERBATIM
+    )
 endif()
 
+# Create combined.bin for all boards. Invoke esptool through the interpreter
+# used by the build (python -m esptool) instead of bash + esptool.py, so that
+# it also works on Windows where 'bash' may resolve to WSL and 'esptool.py'
+# is not on PATH.
+idf_component_get_property(esptool_py_cmd esptool_py ESPTOOLPY_CMD)
+file(STRINGS ${CMAKE_BINARY_DIR}/flash_args MERGE_BIN_ARGS_RAW)
+set(MERGE_BIN_ARGS "")
+foreach(_line IN LISTS MERGE_BIN_ARGS_RAW)
+  string(STRIP "${_line}" _line)
+  if(_line)
+    string(REPLACE " " ";" _parts "${_line}")
+    list(APPEND MERGE_BIN_ARGS ${_parts})
+  endif()
+endforeach()
+
 add_custom_command(TARGET app POST_BUILD
-  COMMAND bash ${CMAKE_BINARY_DIR}/tinyuf2.postbuild.sh
+  COMMAND ${CMAKE_COMMAND} -E echo "Creating combined.bin"
+  COMMAND ${esptool_py_cmd} merge_bin --output combined.bin ${MERGE_BIN_ARGS}
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
   VERBATIM
   )
