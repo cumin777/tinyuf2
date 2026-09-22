@@ -36,7 +36,8 @@ SRC_C += \
 	$(PORT_DIR)/board_flash.c
 
 ifndef BUILD_NO_TINYUSB
-SRC_C += lib/tinyusb/src/portable/nxp/khci/dcd_khci.c
+# tinyusb migrated the NXP Kinetis khci driver to chipidea ci_fs
+SRC_C += lib/tinyusb/src/portable/chipidea/ci_fs/dcd_ci_fs.c
 endif
 
 SRC_S += $(MCU_DIR)/gcc/startup_$(MCU).S

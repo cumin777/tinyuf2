@@ -12,11 +12,24 @@ set(SDKCONFIG ${CMAKE_BINARY_DIR}/sdkconfig)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 idf_build_set_property(EXTRA_CMAKE_ARGS -DBOARD=${BOARD}) # Pass BOARD to bootloader
 
+include($ENV{IDF_PATH}/tools/cmake/version.cmake)
+
+# GCC 15 warns (and IDF promotes to error) on exact-fit string initializers
+# without NUL, e.g. char volume_label[11] = "S31FCB1BOOT". This idiom is
+# intentional for FAT volume labels and UF2 board names. Older GCC (< 15)
+# hard-errors on the unknown -Wno-error= option under -Werror, so only add
+# it on IDF v6.x whose toolchain is based on GCC 15.
+if(IDF_VERSION_MAJOR GREATER_EQUAL 6)
+  idf_build_set_property(COMPILE_OPTIONS "-Wno-error=unterminated-string-initialization" APPEND)
+endif()
+
 execute_process(COMMAND git describe --dirty --always --tags
+                WORKING_DIRECTORY ${TOP}
                 OUTPUT_VARIABLE GIT_VERSION)
 string(STRIP ${GIT_VERSION} GIT_VERSION)
 
-execute_process(COMMAND bash "-c" "git submodule status ${TOP}/lib/tinyusb | cut -d\" \" -f3,4 | paste -s -d\" \" -"
+execute_process(COMMAND bash "-c" "git submodule status lib/tinyusb | cut -d\" \" -f3,4 | paste -s -d\" \" -"
+                WORKING_DIRECTORY ${TOP}
                 OUTPUT_VARIABLE GIT_SUBMODULE_VERSIONS)
 
 string(REPLACE ../ "" GIT_SUBMODULE_VERSIONS ${GIT_SUBMODULE_VERSIONS})
@@ -31,31 +44,59 @@ cmake_print_variables(GIT_VERSION GIT_SUBMODULE_VERSIONS)
 
 project(tinyuf2)
 
-# Create post-build script for combined.bin / combined-ota.bin
-file(WRITE ${CMAKE_BINARY_DIR}/tinyuf2.postbuild.sh
-  "#!/bin/bash\n"
-  "echo \"Creating combined.bin\"\n"
-  "esptool.py --chip ${IDF_TARGET} merge_bin --output combined.bin $(tr '\\n' ' ' < ${CMAKE_BINARY_DIR}/flash_args)\n"
+# Create combined.bin for all boards. flash_args is only generated during the
+# build, so it is parsed by a helper script at build time. esptool is invoked
+# as 'python -m esptool' since esptool v5 no longer provides the 'esptool.py'
+# entry point used by the previous bash-only post-build script.
+idf_component_get_property(esptool_py_cmd esptool_py ESPTOOLPY_CMD)
+if(NOT esptool_py_cmd)
+  # IDF v5.x exposes the esptool command as the plain ESPTOOLPY variable
+  set(esptool_py_cmd ${ESPTOOLPY})
+  list(REMOVE_ITEM esptool_py_cmd "")
+endif()
+file(WRITE ${CMAKE_BINARY_DIR}/tinyuf2_merge_bin.cmake
+  "file(READ \"${CMAKE_BINARY_DIR}/flash_args\" MERGE_BIN_ARGS_RAW)\n"
+  "string(REPLACE \"\\r\" \"\" MERGE_BIN_ARGS_RAW \"\${MERGE_BIN_ARGS_RAW}\")\n"
+  "string(REPLACE \"\\n\" \";\" MERGE_BIN_ARGS_LINES \"\${MERGE_BIN_ARGS_RAW}\")\n"
+  "set(MERGE_BIN_ARGS)\n"
+  "foreach(_line IN LISTS MERGE_BIN_ARGS_LINES)\n"
+  "  string(STRIP \"\${_line}\" _line)\n"
+  "  if(_line)\n"
+  "    string(REPLACE \" \" \";\" _parts \"\${_line}\")\n"
+  "    list(APPEND MERGE_BIN_ARGS \${_parts})\n"
+  "  endif()\n"
+  "endforeach()\n"
+  "execute_process(COMMAND ${esptool_py_cmd} merge_bin --output combined.bin \${MERGE_BIN_ARGS}\n"
+  "                WORKING_DIRECTORY \"${CMAKE_BINARY_DIR}\" RESULT_VARIABLE _res)\n"
+  "if(NOT _res EQUAL 0)\n"
+  "  message(FATAL_ERROR \"esptool merge-bin failed (\${_res})\")\n"
+  "endif()\n"
 )
+
+add_custom_command(TARGET app POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E echo "Creating combined.bin"
+  COMMAND ${CMAKE_COMMAND} -P ${CMAKE_BINARY_DIR}/tinyuf2_merge_bin.cmake
+  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+  VERBATIM
+  )
 
 # check if board is 4MB flash and create combined-ota.bin
 file(READ ${CMAKE_CURRENT_LIST_DIR}/boards/${BOARD}/sdkconfig BOARD_SDKCONFIG_CONTENTS)
 string(FIND ${BOARD_SDKCONFIG_CONTENTS} "partitions-4MB-noota.csv" MATCH_INDEX)
 if(NOT MATCH_INDEX EQUAL -1)
-  file(APPEND ${CMAKE_BINARY_DIR}/tinyuf2.postbuild.sh
+  file(WRITE ${CMAKE_BINARY_DIR}/tinyuf2.postbuild.sh
     "echo \"Creating combined-ota.bin\"\n"
     "gen_esp32part.py ${CMAKE_CURRENT_LIST_DIR}/partitions-4MB.csv ${CMAKE_BINARY_DIR}/partition_table/partitions-table-ota.bin\n"
     "esptool.py --chip ${IDF_TARGET} merge_bin --output combined-ota.bin $(tr '\\n' ' ' < ${CMAKE_BINARY_DIR}/flash_args | sed 's/partition-table.bin/partitions-table-ota.bin/g')\n"
     "cp ${CMAKE_BINARY_DIR}/partition_table/partitions-table-ota.bin ${ARTIFACT_PATH}/partitions-table-ota.bin\n"
     "cp combined-ota.bin ${ARTIFACT_PATH}/combined-ota.bin\n"
     )
+  add_custom_command(TARGET app POST_BUILD
+    COMMAND bash ${CMAKE_BINARY_DIR}/tinyuf2.postbuild.sh
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    VERBATIM
+    )
 endif()
-
-add_custom_command(TARGET app POST_BUILD
-  COMMAND bash ${CMAKE_BINARY_DIR}/tinyuf2.postbuild.sh
-  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-  VERBATIM
-  )
 
 # Post build: copy binaries for artifact
 add_custom_command(TARGET app POST_BUILD

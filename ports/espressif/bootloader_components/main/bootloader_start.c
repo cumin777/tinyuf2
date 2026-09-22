@@ -76,7 +76,6 @@ uint32_t esp_reset_reason_get_hint(void) {
 static void esp_reset_reason_clear_hint(void) {
     REG_WRITE(RTC_RESET_CAUSE_REG, 0);
 }
-
 /*
  * We arrive here after the ROM bootloader finished loading this second stage bootloader from flash.
  * The hardware is mostly uninitialized, flash cache is down and the app CPU is in reset.
@@ -219,7 +218,9 @@ static int selected_boot_partition(const bootloader_state_t *bs) {
           #endif
 
           if (boot_index != FACTORY_INDEX) {
-            #if SOC_USB_SERIAL_JTAG_SUPPORTED
+            // Note: D+/D- pins are shared between USB-Serial-JTAG and OTG on S2/S3 only.
+            // Other targets e.g esp32s31 have dedicated pins for each peripheral.
+            #if SOC_USB_SERIAL_JTAG_SUPPORTED && (CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3)
             // startup with USB JTAG, while delaying here, USB JTAG will be enumerated which can cause confusion when
             // switching to OTG in application. Switch to OTG PHY here to avoid this.
             uint32_t const rtc_cntl_usb_conf = READ_PERI_REG(RTC_CNTL_USB_CONF_REG);
@@ -232,7 +233,12 @@ static int selected_boot_partition(const bootloader_state_t *bs) {
             }
 
             esp_rom_gpio_pad_select_gpio(PIN_BUTTON_UF2);
+            #if CONFIG_IDF_TARGET_ESP32S31
+            // esp32s31 no longer provides GPIO_PIN_MUX_REG[]
+            gpio_ll_input_enable(&GPIO, PIN_BUTTON_UF2);
+            #else
             PIN_INPUT_ENABLE(GPIO_PIN_MUX_REG[PIN_BUTTON_UF2]);
+            #endif
             esp_rom_gpio_pad_pullup_only(PIN_BUTTON_UF2);
 
             // run the GPIO detection at least once even if UF2_DETECTION_DELAY_MS is set to zero
@@ -249,7 +255,8 @@ static int selected_boot_partition(const bootloader_state_t *bs) {
               board_led_off();
             }
 
-            #if SOC_USB_SERIAL_JTAG_SUPPORTED
+            // Note: D+/D- pins are shared between USB-Serial-JTAG and OTG on S2/S3 only.
+            #if SOC_USB_SERIAL_JTAG_SUPPORTED && (CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3)
             WRITE_PERI_REG(RTC_CNTL_USB_CONF_REG, rtc_cntl_usb_conf);
             #endif
           }
@@ -271,10 +278,12 @@ static int selected_boot_partition(const bootloader_state_t *bs) {
 }
 
 // Return global reent struct if any newlib functions are linked to bootloader
+#if CONFIG_LIBC_NEWLIB
 struct _reent *__getreent(void)
 {
     return _GLOBAL_REENT;
 }
+#endif
 
 //--------------------------------------------------------------------+
 // Board LED Indicator
@@ -283,11 +292,11 @@ struct _reent *__getreent(void)
 static inline uint32_t ns2cycle(uint32_t ns) {
   uint32_t tick_per_us;
 
-#if CONFIG_IDF_TARGET_ESP32S3
-  tick_per_us = ets_get_cpu_frequency();
-#else // ESP32S2
+#if CONFIG_IDF_TARGET_ESP32S2
   extern uint32_t g_ticks_per_us_pro;
   tick_per_us = g_ticks_per_us_pro;
+#else // ESP32S3, ESP32S31
+  tick_per_us = ets_get_cpu_frequency();
 #endif
 
   return (tick_per_us*ns) / 1000;

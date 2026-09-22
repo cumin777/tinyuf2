@@ -78,7 +78,11 @@ int main(void) {
   board_timer_start(1);
 
   board_usb_init();
-  tud_init(BOARD_TUD_RHPORT);
+  const tusb_rhport_init_t rh_init = {
+    .role = TUSB_ROLE_DEVICE,
+    .speed = TUD_OPT_HIGH_SPEED ? TUSB_SPEED_HIGH : TUSB_SPEED_FULL
+  };
+  tusb_init(BOARD_TUD_RHPORT, &rh_init);
 
   setColor(0);
   pinMode(13, OUTPUT);
